@@ -3,7 +3,9 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta charset="UTF-8" />
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
   <style>
     * { margin: 0; padding: 0; }
     body { overflow: hidden; background: #000; }
@@ -13,51 +15,51 @@
 <body>
 <div id="container"></div>
 <script>
-const { MindARThree } = window.MINDAR.IMAGE;
-const THREE = window.THREE;
-
-const mindarThree = new MindARThree({
-  container: document.getElementById('container'),
-  imageTargetSrc: './targets.mind',
-  uiLoading: 'no',
-  uiScanning: 'no',
-  uiError: 'no',
-});
-
-const { renderer, scene, camera } = mindarThree;
-renderer.setClearColor(0x000000, 0);
-const anchor = mindarThree.addAnchor(0);
-
-scene.add(new THREE.AmbientLight(0xffffff, 1));
-const light = new THREE.PointLight(0xffaa00, 3, 6);
-light.position.set(1, 2, 1);
-scene.add(light);
-
-const loader = new THREE.GLTFLoader();
-loader.load('./model.glb', (gltf) => {
-  const model = gltf.scene;
-  model.scale.set(0.15, 0.15, 0.15);
-  model.position.y = 0.05;
-  anchor.group.add(model);
-
-  const mixer = new THREE.AnimationMixer(model);
-  if (gltf.animations.length > 0) {
-    gltf.animations.forEach(clip => mixer.clipAction(clip).play());
-  }
-
-  const clock = new THREE.Clock();
-  let t = 0;
-  renderer.setAnimationLoop(() => {
-    const delta = clock.getDelta();
-    t += delta;
-    mixer.update(delta);
-    model.rotation.y += 0.02;
-    model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
-    renderer.render(scene, camera);
+window.addEventListener('load', function() {
+  const mindarThree = new MindARThree({
+    container: document.getElementById('container'),
+    imageTargetSrc: './targets.mind',
+    uiLoading: 'no',
+    uiScanning: 'no',
+    uiError: 'no',
   });
-});
 
-mindarThree.start();
+  const { renderer, scene, camera } = mindarThree;
+  const anchor = mindarThree.addAnchor(0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
+  const light = new THREE.PointLight(0xffaa00, 3, 6);
+  light.position.set(1, 2, 1);
+  scene.add(light);
+
+  const loader = new THREE.GLTFLoader();
+  loader.load('./model.glb', function(gltf) {
+    const model = gltf.scene;
+    model.scale.set(0.15, 0.15, 0.15);
+    model.position.y = 0.05;
+    anchor.group.add(model);
+
+    const mixer = new THREE.AnimationMixer(model);
+    if (gltf.animations.length > 0) {
+      gltf.animations.forEach(function(clip) {
+        mixer.clipAction(clip).play();
+      });
+    }
+
+    const clock = new THREE.Clock();
+    let t = 0;
+    renderer.setAnimationLoop(function() {
+      const delta = clock.getDelta();
+      t += delta;
+      mixer.update(delta);
+      model.rotation.y += 0.02;
+      model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
+      renderer.render(scene, camera);
+    });
+  });
+
+  mindarThree.start();
+});
 </script>
 </body>
 </html>
