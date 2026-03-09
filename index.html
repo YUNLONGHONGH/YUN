@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <script>
+      const mindarThree = new MindARThree({
+        container: document.body,
+        imageTargetSrc: "./targets.mind", // 你的 .mind 檔
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+
+      const anchor = mindarThree.addAnchor(0);
+
+      // 載入 3D 模型
+      const loader = new THREE.GLTFLoader();
+      loader.load("./model.glb", (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(0.1, 0.1, 0.1); // 調整大小
+        anchor.group.add(model);
+
+        // 播放動畫（如果模型有動畫）
+        const mixer = new THREE.AnimationMixer(model);
+        if (gltf.animations.length > 0) {
+          mixer.clipAction(gltf.animations[0]).play();
+        }
+
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+          const delta = clock.getDelta();
+          mixer.update(delta);
+          renderer.render(scene, camera);
+        });
+      });
+
+      // 加入光源
+      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+      scene.add(light);
+
+      mindarThree.start();
+    </script>
+  </body>
+</html>
