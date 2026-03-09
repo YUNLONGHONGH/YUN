@@ -3,62 +3,87 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta charset="UTF-8" />
+  <title>AR 生日卡片</title>
   <style>
     * { margin: 0; padding: 0; }
     body { overflow: hidden; background: #000; }
     #container { width: 100vw; height: 100vh; }
   </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
 </head>
 <body>
-<div id="container"></div>
-<script type="module">
-  import * as THREE from 'https://unpkg.com/three@0.134.0/build/three.module.js';
-  import { GLTFLoader } from 'https://unpkg.com/three@0.134.0/examples/jsm/loaders/GLTFLoader.js';
-  import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
+  <div id="container"></div>
 
-  const mindarThree = new MindARThree({
-    container: document.getElementById('container'),
-    imageTargetSrc: './targets.mind',
-    uiLoading: 'no',
-    uiScanning: 'no',
-    uiError: 'no',
-  });
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 透過傳統 script 引入時，MindARThree 會掛載到 window.MINDAR.IMAGE 下
+      const { MindARThree } = window.MINDAR.IMAGE;
 
-  const { renderer, scene, camera } = mindarThree;
-  const anchor = mindarThree.addAnchor(0);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 1));
-  const light = new THREE.PointLight(0xffaa00, 3, 6);
-  light.position.set(1, 2, 1);
-  scene.add(light);
-
-  const loader = new GLTFLoader();
-  loader.load('./model.glb', function(gltf) {
-    const model = gltf.scene;
-    model.scale.set(0.15, 0.15, 0.15);
-    model.position.y = 0.05;
-    anchor.group.add(model);
-
-    const mixer = new THREE.AnimationMixer(model);
-    if (gltf.animations.length > 0) {
-      gltf.animations.forEach(function(clip) {
-        mixer.clipAction(clip).play();
+      const mindarThree = new MindARThree({
+        container: document.getElementById('container'),
+        imageTargetSrc: './targets.mind',
+        uiLoading: 'no',
+        uiScanning: 'no',
+        uiError: 'no',
       });
-    }
 
-    const clock = new THREE.Clock();
-    let t = 0;
-    renderer.setAnimationLoop(function() {
-      const delta = clock.getDelta();
-      t += delta;
-      mixer.update(delta);
-      model.rotation.y += 0.02;
-      model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
-      renderer.render(scene, camera);
+      const { renderer, scene, camera } = mindarThree;
+      const anchor = mindarThree.addAnchor(0);
+
+      // 設定燈光
+      scene.add(new THREE.AmbientLight(0xffffff, 1));
+      const light = new THREE.PointLight(0xffaa00, 3, 6);
+      light.position.set(1, 2, 1);
+      scene.add(light);
+
+      // 載入 3D 模型
+      // 注意：透過一般 script 引入時，會自動變成 THREE.GLTFLoader
+      const loader = new THREE.GLTFLoader();
+      let mixer; 
+
+      loader.load('./model.glb', function(gltf) {
+        const model = gltf.scene;
+        model.scale.set(0.15, 0.15, 0.15); // 如果模型太大或太小，可以調整這裡
+        model.position.y = 0.05;
+        anchor.group.add(model);
+
+        // 設定模型動畫
+        mixer = new THREE.AnimationMixer(model);
+        if (gltf.animations.length > 0) {
+          gltf.animations.forEach(function(clip) {
+            mixer.clipAction(clip).play();
+          });
+        }
+
+        const clock = new THREE.Clock();
+        let t = 0;
+        
+        // 設定渲染迴圈與自訂的旋轉/浮動效果
+        renderer.setAnimationLoop(function() {
+          const delta = clock.getDelta();
+          t += delta;
+          if (mixer) mixer.update(delta);
+          
+          model.rotation.y += 0.02;
+          model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
+          
+          renderer.render(scene, camera);
+        });
+      });
+
+      // 啟動 AR
+      const start = async () => {
+        try {
+          await mindarThree.start();
+        } catch (err) {
+          console.error("相機啟動失敗:", err);
+        }
+      };
+      start();
     });
-  });
-
-  mindarThree.start();
-</script>
+  </script>
 </body>
 </html>
