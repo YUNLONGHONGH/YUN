@@ -1,75 +1,154 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta charset="UTF-8" />
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <style>
     * { margin: 0; padding: 0; }
-    body { overflow: hidden; background: #000; }
-    #container { width: 100vw; height: 100vh; }
+    body { overflow: hidden; }
   </style>
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.134.0/build/three.module.js",
-      "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.134.0/examples/jsm/loaders/GLTFLoader.js",
-      "three/addons/renderers/CSS3DRenderer.js": "https://unpkg.com/three@0.134.0/examples/jsm/renderers/CSS3DRenderer.js",
-      "three/addons/": "https://unpkg.com/three@0.134.0/examples/jsm/",
-      "three/examples/jsm/": "https://unpkg.com/three@0.134.0/examples/jsm/"
-    }
-  }
-  </script>
 </head>
 <body>
-<div id="container"></div>
-<script type="module">
-  import * as THREE from 'three';
-  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-  import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <a-assets>
+      <a-asset-item id="model" src="./model.glb"></a-asset-item>
+    </a-assets>
 
-  const mindarThree = new MindARThree({
-    container: document.getElementById('container'),
-    imageTargetSrc: './targets.mind',
-    uiLoading: 'no',
-    uiScanning: 'no',
-    uiError: 'no',
-  });
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  const { renderer, scene, camera } = mindarThree;
-  const anchor = mindarThree.addAnchor(0);
+    <!-- =====================================================  -->
+    <!-- 🟡 光源區域 - 控制模型的打光效果                      -->
+    <!-- =====================================================  -->
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1));
-  const light = new THREE.PointLight(0xffaa00, 3, 6);
-  light.position.set(1, 2, 1);
-  scene.add(light);
+    <!-- 🟡 金色點光源（照亮模型正面） -->
+    <a-light type="point" color="#FFE066" intensity="2" position="0 0.5 0.3"></a-light>
 
-  const loader = new GLTFLoader();
-  loader.load('./model.glb', function(gltf) {
-    const model = gltf.scene;
-    model.scale.set(0.15, 0.15, 0.15);
-    model.position.y = 0.05;
-    anchor.group.add(model);
+    <!-- 🟣 紫色點光源（側面補光，增加神秘感） -->
+    <a-light type="point" color="#CC44FF" intensity="1.5" position="-0.5 0.3 0"></a-light>
 
-    const mixer = new THREE.AnimationMixer(model);
-    if (gltf.animations.length > 0) {
-      gltf.animations.forEach(function(clip) {
-        mixer.clipAction(clip).play();
-      });
-    }
+    <!-- 🔵 藍色點光源（背面輪廓光，讓模型更立體） -->
+    <a-light type="point" color="#44AAFF" intensity="1.5" position="0.5 0.2 -0.3"></a-light>
 
-    const clock = new THREE.Clock();
-    let t = 0;
-    renderer.setAnimationLoop(function() {
-      const delta = clock.getDelta();
-      t += delta;
-      mixer.update(delta);
-      model.rotation.y += 0.02;
-      model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
-      renderer.render(scene, camera);
-    });
-  });
+    <!-- ⚪ 環境光（整體亮度，避免暗面太黑） -->
+    <a-light type="ambient" color="#FFFFFF" intensity="0.8"></a-light>
 
-  mindarThree.start();
-</script>
+    <!-- ===================================================== -->
+    <!-- 錨點：偵測到卡片後，所有東西顯示在這裡                -->
+    <!-- ===================================================== -->
+    <a-entity mindar-image-target="targetIndex: 0">
+
+      <!-- ===================================================== -->
+      <!-- 🟠 模型本體 - 最重要的區域                            -->
+      <!-- ===================================================== -->
+      <a-gltf-model
+        src="#model"
+        position="0 0.1 0"
+        scale="0.5 0.5 0.5"
+        rotation="-90 0 0"
+        animation-mixer
+
+        animation="property: rotation;
+                   from: -90 0 0;
+                   to: -90 360 0;
+                   loop: true;
+                   dur: 4000;
+                   easing: linear"
+
+        animation__float="property: position;
+                          from: 0 0.05 0;
+                          to: 0 0.15 0;
+                          loop: true;
+                          dur: 1500;
+                          easing: easeInOutSine;
+                          dir: alternate"
+      ></a-gltf-model>
+
+      <!-- ===================================================== -->
+      <!-- 🔵 魔法陣 - 地板旋轉環                               -->
+      <!-- ===================================================== -->
+
+      <!-- 🔵 外圈金色旋轉環 -->
+      <a-torus
+        position="0 0 0"
+        rotation="90 0 0"
+        radius="0.22"
+        radius-tubular="0.005"
+        color="#FFE066"
+        material="emissive: #FFE066; emissiveIntensity: 0.8;"
+        animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 3000; easing: linear"
+      ></a-torus>
+
+      <!-- 🔵 中圈粉色旋轉環（反向） -->
+      <a-torus
+        position="0 0 0"
+        rotation="90 0 0"
+        radius="0.16"
+        radius-tubular="0.004"
+        color="#FF44CC"
+        material="emissive: #FF44CC; emissiveIntensity: 0.8;"
+        animation="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 2000; easing: linear"
+      ></a-torus>
+
+      <!-- 🔵 內圈藍色旋轉環 -->
+      <a-torus
+        position="0 0 0"
+        rotation="90 0 0"
+        radius="0.10"
+        radius-tubular="0.003"
+        color="#44CCFF"
+        material="emissive: #44CCFF; emissiveIntensity: 0.8;"
+        animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 1500; easing: linear"
+      ></a-torus>
+
+      <!-- ===================================================== -->
+      <!-- ⭐ 衛星方塊 - 繞著模型旁邊的彩色小方塊              -->
+      <!-- ===================================================== -->
+
+      <!-- ⭐ 衛星1：金色 -->
+      <a-box
+        position="0.22 0.08 0"
+        scale="0.02 0.02 0.02"
+        color="#FFE066"
+        material="emissive: #FFE066; emissiveIntensity: 1;"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 800; easing: linear"
+      ></a-box>
+
+      <!-- ⭐ 衛星2：青色 -->
+      <a-box
+        position="-0.22 0.12 0"
+        scale="0.018 0.018 0.018"
+        color="#00FFFF"
+        material="emissive: #00FFFF; emissiveIntensity: 1;"
+        animation="property: rotation; to: 360 0 0; loop: true; dur: 600; easing: linear"
+      ></a-box>
+
+      <!-- ⭐ 衛星3：粉色 -->
+      <a-box
+        position="0 0.10 0.22"
+        scale="0.016 0.016 0.016"
+        color="#FF44CC"
+        material="emissive: #FF44CC; emissiveIntensity: 1;"
+        animation="property: rotation; to: 0 0 360; loop: true; dur: 700; easing: linear"
+      ></a-box>
+
+      <!-- ⭐ 衛星4：紫色 -->
+      <a-box
+        position="0 0.06 -0.22"
+        scale="0.015 0.015 0.015"
+        color="#AA44FF"
+        material="emissive: #AA44FF; emissiveIntensity: 1;"
+        animation="property: rotation; to: 360 360 0; loop: true; dur: 500; easing: linear"
+      ></a-box>
+
+    </a-entity>
+  </a-scene>
 </body>
 </html>
