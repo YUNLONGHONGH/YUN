@@ -25,57 +25,52 @@
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
 
-  const mindarThree = new MindARThree({
-    container: document.getElementById('container'),
-    imageTargetSrc: 'targets.mind', // 建議移除 ./
-    uiLoading: 'no', uiScanning: 'no', uiError: 'no',
-  });
-
-  const { renderer, scene, camera } = mindarThree;
-  const anchor = mindarThree.addAnchor(0);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 1));
-  const light = new THREE.PointLight(0xffaa00, 3, 6);
-  light.position.set(1, 2, 1);
-  scene.add(light);
-
-  const loader = new GLTFLoader();
-  
-  // 注意：這裡改為 model1.glb，因為你 GitHub 上的檔案是這個名字
-  loader.load('model1.glb', function(gltf) {
-    const model = gltf.scene;
-    model.scale.set(0.15, 0.15, 0.15);
-    model.position.y = 0.05;
-    anchor.group.add(model);
-
-    const mixer = new THREE.AnimationMixer(model);
-    if (gltf.animations.length > 0) {
-      gltf.animations.forEach(function(clip) {
-        mixer.clipAction(clip).play();
-      });
-    }
-
-    const clock = new THREE.Clock();
-    let t = 0;
-    renderer.setAnimationLoop(function() {
-      const delta = clock.getDelta();
-      t += delta;
-      mixer.update(delta);
-      model.rotation.y += 0.02;
-      model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
-      renderer.render(scene, camera);
+  async function startAR() {
+    const mindarThree = new MindARThree({
+      container: document.getElementById('container'),
+      imageTargetSrc: 'targets.mind', // 移除 ./ 以符合 GitHub Pages 路徑
+      uiLoading: 'yes', uiScanning: 'yes', uiError: 'yes',
     });
-  }, undefined, function(error) {
-    // 如果載入失敗，會彈出錯誤提示
-    console.error(error);
-    alert("模型載入失敗，請檢查檔案是否存在: " + error.message);
-  });
 
-  // 啟動相機 (請確保在 https 環境下執行)
-  mindarThree.start().catch(err => {
-    console.error(err);
-    if (err.name === 'NotAllowedError') alert("請允許相機權限");
-  });
+    const { renderer, scene, camera } = mindarThree;
+    const anchor = mindarThree.addAnchor(0);
+    scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+    const loader = new GLTFLoader();
+    
+    // 關鍵：使用你 GitHub 上確實存在的檔名
+    loader.load('model1.glb', (gltf) => {
+      const model = gltf.scene;
+      model.scale.setScalar(0.15);
+      model.position.y = 0.05;
+      anchor.group.add(model);
+
+      const mixer = new THREE.AnimationMixer(model);
+      if (gltf.animations.length > 0) {
+        gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+      }
+
+      const clock = new THREE.Clock();
+      renderer.setAnimationLoop(() => {
+        const delta = clock.getDelta();
+        mixer.update(delta);
+        model.rotation.y += 0.01;
+        renderer.render(scene, camera);
+      });
+    }, undefined, (error) => {
+      console.error("模型載入失敗:", error);
+      alert("載入失敗，請確認檔案 'model1.glb' 是否與此網頁在同一個資料夾。");
+    });
+
+    try {
+      await mindarThree.start();
+    } catch (err) {
+      console.error("相機啟動失敗:", err);
+      if (err.name === 'NotAllowedError') alert("請允許相機權限");
+    }
+  }
+
+  startAR();
 </script>
 </body>
 </html>
