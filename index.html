@@ -8,10 +8,6 @@
   <style>
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
-
-    /* ============================================
-       像素風格 Canvas 特效層
-       ============================================ */
     #pixel-canvas {
       position: fixed;
       top: 0; left: 0;
@@ -24,12 +20,9 @@
 </head>
 <body>
 
-<!-- 像素粒子特效 Canvas -->
+<!-- 像素粒子特效 Canvas（覆蓋在最上層） -->
 <canvas id="pixel-canvas"></canvas>
 
-<!-- ============================================
-     A-Frame AR 場景
-     ============================================ -->
 <a-scene
   mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
   color-space="sRGB"
@@ -45,219 +38,92 @@
 
   <a-entity mindar-image-target="targetIndex: 0">
 
-    <!-- ============================================
-         🟡 金色點光源（從上方打光，讓模型發光）
-         ============================================ -->
-    <a-light
-      type="point"
-      color="#FFE066"
-      intensity="3"
-      position="0 0.5 0.3"
-    ></a-light>
+    <!-- 🟡 金色點光源（上方） -->
+    <a-light type="point" color="#FFE066" intensity="3" position="0 0.5 0.3"></a-light>
+    <!-- 🔵 青色點光源（下方補光） -->
+    <a-light type="point" color="#00FFFF" intensity="2" position="0 -0.2 0.3"></a-light>
+    <!-- 🟣 紫色點光源（側面） -->
+    <a-light type="point" color="#FF00FF" intensity="1.5" position="-0.5 0.3 0.3"></a-light>
 
-    <!-- ============================================
-         🔵 藍色點光源（從下方補光，像素霓虹感）
-         ============================================ -->
-    <a-light
-      type="point"
-      color="#00FFFF"
-      intensity="2"
-      position="0 -0.2 0.3"
-    ></a-light>
-
-    <!-- ============================================
-         🟣 紫色點光源（側面，增加立體感）
-         ============================================ -->
-    <a-light
-      type="point"
-      color="#FF00FF"
-      intensity="1.5"
-      position="-0.5 0.3 0.3"
-    ></a-light>
-
-    <!-- ============================================
-         ⭐ 3D 模型本體
-         scale   → 模型大小（調大調小改這裡）
-         position→ 位置，y往上移
-         rotation→ x=-90 讓模型垂直站起來（你畫的那樣）
-         animation-mixer → 播放模型內建動畫
-         animation__spin  → 左右搖擺（站立狀態下轉y軸）
-         animation__float → 上下浮動
-         ============================================ -->
+    <!-- ⭐ 3D 模型（原本角度，浮動） -->
     <a-gltf-model
       src="#model"
       scale="0.5 0.5 0.5"
-      position="0 0.15 0"
-      rotation="-90 0 0"
+      position="0 0.05 0"
+      rotation="0 0 0"
       animation-mixer="clip: *; loop: repeat"
       animation__spin="
         property: rotation;
-        from: -90 -15 0;
-        to:   -90  15 0;
-        loop: true;
-        dur: 1800;
-        easing: easeInOutSine;
-        dir: alternate"
+        from: 0 -15 0;
+        to:   0  15 0;
+        loop: true; dur: 1800;
+        easing: easeInOutSine; dir: alternate"
       animation__float="
         property: position;
-        from: 0 0.10 0;
-        to:   0 0.20 0;
-        loop: true;
-        dur: 1400;
-        easing: easeInOutSine;
-        dir: alternate"
+        from: 0 0.02 0;
+        to:   0 0.10 0;
+        loop: true; dur: 1400;
+        easing: easeInOutSine; dir: alternate"
     ></a-gltf-model>
 
-    <!-- ============================================
-         🟡 像素魔法陣 ring 1（金色外環）
-         animation__r1 → 持續旋轉
-         ============================================ -->
-    <a-torus
-      position="0 0.01 0"
-      rotation="90 0 0"
-      radius="0.22"
-      radius-tubular="0.008"
-      segments-tubular="12"
-      color="#FFE066"
-      material="emissive: #FFE066; emissiveIntensity: 1.5; shader: flat"
-      animation__r1="
-        property: rotation;
-        from: 90 0 0;
-        to:   90 360 0;
-        loop: true;
-        dur: 3000;
-        easing: linear"
-    ></a-torus>
+    <!-- 🟡 魔法陣外環（金） -->
+    <a-torus position="0 0.01 0" rotation="90 0 0"
+      radius="0.22" radius-tubular="0.008" segments-tubular="12"
+      color="#FFE066" material="emissive: #FFE066; emissiveIntensity: 1.5; shader: flat"
+      animation__r1="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 3000; easing: linear">
+    </a-torus>
 
-    <!-- ============================================
-         🔵 像素魔法陣 ring 2（青色內環，反向轉）
-         ============================================ -->
-    <a-torus
-      position="0 0.01 0"
-      rotation="90 0 0"
-      radius="0.15"
-      radius-tubular="0.006"
-      segments-tubular="12"
-      color="#00FFFF"
-      material="emissive: #00FFFF; emissiveIntensity: 1.5; shader: flat"
-      animation__r2="
-        property: rotation;
-        from: 90 0 0;
-        to:   90 -360 0;
-        loop: true;
-        dur: 2000;
-        easing: linear"
-    ></a-torus>
+    <!-- 🔵 魔法陣內環（青，反向） -->
+    <a-torus position="0 0.01 0" rotation="90 0 0"
+      radius="0.15" radius-tubular="0.006" segments-tubular="12"
+      color="#00FFFF" material="emissive: #00FFFF; emissiveIntensity: 1.5; shader: flat"
+      animation__r2="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 2000; easing: linear">
+    </a-torus>
 
-    <!-- ============================================
-         🟣 像素魔法陣 ring 3（粉色最外環）
-         ============================================ -->
-    <a-torus
-      position="0 0.01 0"
-      rotation="90 0 0"
-      radius="0.30"
-      radius-tubular="0.004"
-      segments-tubular="12"
-      color="#FF00FF"
-      material="emissive: #FF00FF; emissiveIntensity: 1.2; shader: flat"
-      animation__r3="
-        property: rotation;
-        from: 90 0 0;
-        to:   90 360 0;
-        loop: true;
-        dur: 4500;
-        easing: linear"
-    ></a-torus>
+    <!-- 🟣 魔法陣最外環（粉紫） -->
+    <a-torus position="0 0.01 0" rotation="90 0 0"
+      radius="0.30" radius-tubular="0.004" segments-tubular="12"
+      color="#FF00FF" material="emissive: #FF00FF; emissiveIntensity: 1.2; shader: flat"
+      animation__r3="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 4500; easing: linear">
+    </a-torus>
 
-    <!-- ============================================
-         🟡 像素衛星方塊 1（金色，繞大圓）
-         ============================================ -->
-    <a-box
-      position="0.22 0.08 0"
-      scale="0.025 0.025 0.025"
-      color="#FFE066"
-      material="emissive: #FFE066; emissiveIntensity: 2; shader: flat"
-      animation__orbit="
-        property: position;
-        from: 0.22 0.08 0;
-        to:   0.22 0.08 0;
-        loop: true;
-        dur: 2500;
-        easing: linear"
-      animation__orbitrot="
-        property: rotation;
-        from: 0 0 0;
-        to: 0 360 0;
-        loop: true;
-        dur: 2500;
-        easing: linear"
-    ></a-box>
+    <!-- 🟡 衛星方塊（金） -->
+    <a-box position="0.22 0.08 0" scale="0.025 0.025 0.025"
+      color="#FFE066" material="emissive: #FFE066; emissiveIntensity: 2; shader: flat"
+      animation__bob="property: position; from: 0.22 0.04 0; to: 0.22 0.12 0; loop: true; dur: 1100; easing: easeInOutSine; dir: alternate">
+    </a-box>
 
-    <!-- ============================================
-         🔵 像素衛星方塊 2（青色，繞中圓）
-         ============================================ -->
-    <a-box
-      position="-0.16 0.06 0"
-      scale="0.020 0.020 0.020"
-      color="#00FFFF"
-      material="emissive: #00FFFF; emissiveIntensity: 2; shader: flat"
-      animation__orbitrot2="
-        property: rotation;
-        from: 0 0 0;
-        to: 0 -360 0;
-        loop: true;
-        dur: 1800;
-        easing: linear"
-    ></a-box>
+    <!-- 🔵 衛星方塊（青） -->
+    <a-box position="-0.16 0.06 0" scale="0.020 0.020 0.020"
+      color="#00FFFF" material="emissive: #00FFFF; emissiveIntensity: 2; shader: flat"
+      animation__bob="property: position; from: -0.16 0.02 0; to: -0.16 0.10 0; loop: true; dur: 900; easing: easeInOutSine; dir: alternate">
+    </a-box>
 
-    <!-- ============================================
-         🟢 像素衛星方塊 3（綠色，高位置）
-         ============================================ -->
-    <a-box
-      position="0 0.12 0.20"
-      scale="0.018 0.018 0.018"
-      color="#00FF41"
-      material="emissive: #00FF41; emissiveIntensity: 2; shader: flat"
-      animation__bob="
-        property: position;
-        from: 0 0.08 0.20;
-        to:   0 0.16 0.20;
-        loop: true;
-        dur: 1200;
-        easing: easeInOutSine;
-        dir: alternate"
-    ></a-box>
+    <!-- 🟢 衛星方塊（綠） -->
+    <a-box position="0 0.12 0.20" scale="0.018 0.018 0.018"
+      color="#00FF41" material="emissive: #00FF41; emissiveIntensity: 2; shader: flat"
+      animation__bob="property: position; from: 0 0.06 0.20; to: 0 0.16 0.20; loop: true; dur: 1300; easing: easeInOutSine; dir: alternate">
+    </a-box>
 
-    <!-- ============================================
-         🔴 像素衛星方塊 4（紅色）
-         ============================================ -->
-    <a-box
-      position="0.10 0.05 -0.18"
-      scale="0.016 0.016 0.016"
-      color="#FF2020"
-      material="emissive: #FF2020; emissiveIntensity: 2; shader: flat"
-      animation__bob2="
-        property: position;
-        from: 0.10 0.03 -0.18;
-        to:   0.10 0.10 -0.18;
-        loop: true;
-        dur: 900;
-        easing: easeInOutSine;
-        dir: alternate"
-    ></a-box>
+    <!-- 🔴 衛星方塊（紅） -->
+    <a-box position="0.10 0.05 -0.18" scale="0.016 0.016 0.016"
+      color="#FF2020" material="emissive: #FF2020; emissiveIntensity: 2; shader: flat"
+      animation__bob="property: position; from: 0.10 0.01 -0.18; to: 0.10 0.10 -0.18; loop: true; dur: 800; easing: easeInOutSine; dir: alternate">
+    </a-box>
 
   </a-entity>
 </a-scene>
 
-<!-- ============================================
-     像素粒子特效 JavaScript
-     ============================================ -->
 <script>
+// =============================================
+//  像素粒子特效（全畫面漂浮方塊）
+// =============================================
 const canvas = document.getElementById('pixel-canvas');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
 function resize() {
-  canvas.width  = Math.floor(window.innerWidth  / 3);  // 故意低解析度→像素感
+  // 故意用低解析度讓粒子有像素感
+  canvas.width  = Math.floor(window.innerWidth  / 3);
   canvas.height = Math.floor(window.innerHeight / 3);
   canvas.style.width  = window.innerWidth  + 'px';
   canvas.style.height = window.innerHeight + 'px';
@@ -265,76 +131,53 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// 像素粒子顏色（像素遊戲調色盤）
-const PIXEL_COLORS = [
-  '#FFE066', // 金
-  '#FF8C00', // 橙
-  '#FF00FF', // 粉紫
-  '#00FFFF', // 青
-  '#00FF41', // 綠
-  '#FF2020', // 紅
-  '#FFFFFF', // 白
-  '#BF00FF', // 紫
-];
+const COLORS = ['#FFE066','#FF8C00','#FF00FF','#00FFFF','#00FF41','#FF2020','#FFFFFF','#BF00FF'];
 
-// 粒子陣列
-const particles = [];
-
-class PixelParticle {
+class Pixel {
   constructor() { this.reset(true); }
   reset(init = false) {
-    this.x    = Math.random() * canvas.width;
-    this.y    = init ? Math.random() * canvas.height : canvas.height + 2;
-    this.size = 1 + Math.floor(Math.random() * 3);       // 1~3像素大
-    this.vy   = -(0.3 + Math.random() * 0.8);
-    this.vx   = (Math.random() - 0.5) * 0.5;
-    this.life = init ? Math.random() : 1;
-    this.decay= 0.008 + Math.random() * 0.012;
-    this.color= PIXEL_COLORS[Math.floor(Math.random() * PIXEL_COLORS.length)];
-    this.blink= Math.random() > 0.4;                      // 40% 閃爍
+    this.x     = Math.random() * canvas.width;
+    this.y     = init ? Math.random() * canvas.height : canvas.height + 2;
+    this.size  = 1 + Math.floor(Math.random() * 3);
+    this.vy    = -(0.3 + Math.random() * 0.8);
+    this.vx    = (Math.random() - 0.5) * 0.4;
+    this.life  = init ? Math.random() : 1;
+    this.decay = 0.006 + Math.random() * 0.010;
+    this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
     this.blinkSpeed = 3 + Math.random() * 6;
     this.blinkT     = Math.random() * Math.PI * 2;
+    this.doBlink    = Math.random() > 0.4;
   }
   update(dt) {
-    this.x    += this.vx;
-    this.y    += this.vy;
-    this.life -= this.decay;
+    this.x     += this.vx;
+    this.y     += this.vy;
+    this.life  -= this.decay;
     this.blinkT += this.blinkSpeed * dt;
     if (this.life <= 0) this.reset();
   }
   draw() {
-    if (this.blink && Math.sin(this.blinkT) < 0) return; // 閃爍
-    ctx.globalAlpha = Math.max(0, this.life) * 0.9;
+    if (this.doBlink && Math.sin(this.blinkT) < 0) return;
+    ctx.globalAlpha = Math.max(0, this.life) * 0.85;
     ctx.fillStyle   = this.color;
-    // 用 fillRect 畫像素方塊（不是圓形）
-    ctx.fillRect(
-      Math.floor(this.x),
-      Math.floor(this.y),
-      this.size,
-      this.size
-    );
+    ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
   }
 }
 
-// 建立 80 個粒子
-for (let i = 0; i < 80; i++) particles.push(new PixelParticle());
+const pixels = [];
+for (let i = 0; i < 100; i++) pixels.push(new Pixel());
 
-// 動畫迴圈
 let lastTime = 0;
-function animLoop(ts) {
-  requestAnimationFrame(animLoop);
+function loop(ts) {
+  requestAnimationFrame(loop);
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
-
-  // 清除（半透明殘影→像素拖尾效果）
-  ctx.globalAlpha = 0.25;
+  // 半透明黑色殘影 → 像素拖尾效果
+  ctx.globalAlpha = 0.2;
   ctx.fillStyle   = '#000000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 更新 + 畫出粒子
-  particles.forEach(p => { p.update(dt); p.draw(); });
+  pixels.forEach(p => { p.update(dt); p.draw(); });
 }
-requestAnimationFrame(animLoop);
+requestAnimationFrame(loop);
 </script>
 
 </body>
