@@ -16,11 +16,15 @@
     * { margin: 0; padding: 0; }
     body { overflow: hidden; background: #000; font-family: sans-serif; }
     #container { width: 100vw; height: 100vh; }
-    #ui-msg { position: fixed; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.6); padding: 10px; z-index: 1000; pointer-events: none; border-radius: 5px; }
+    #ui-msg { 
+      position: fixed; top: 20px; left: 20px; color: white; 
+      background: rgba(0,0,0,0.7); padding: 12px; z-index: 1000; 
+      border-radius: 8px; font-size: 14px; line-height: 1.5;
+    }
   </style>
 </head>
 <body>
-<div id="ui-msg">準備載入 AR...</div>
+<div id="ui-msg">正在初始化環境...</div>
 <div id="container"></div>
 
 <script type="module">
@@ -30,34 +34,44 @@
 
   const msg = document.getElementById('ui-msg');
   const FPS = 24;
-  const SEGMENT = { s1_end: 20, s2_start: 20, s2_end: 60 };
   const cache = {};
-  
   let state = 'model1', activeModel = null, mixer = null;
   const clock = new THREE.Clock();
 
-  // 修正後的載入函式：加上 Cache Busting 避免抓到舊的 404 緩存
+  // 取得當前正確的基礎路徑，確保 GitHub Pages 子目錄不會出錯
+  const getCorrectPath = (file) => {
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf("/") + 1);
+    return baseUrl + file;
+  };
+
   async function loadGLB(fileName) {
     const loader = new GLTFLoader();
-    // 加上時間戳記確保抓到的是伺服器最新檔案，而非緩存的 404 頁面
-    const url = `${fileName}?v=${Date.now()}`;
+    const url = getCorrectPath(fileName);
+    
+    msg.innerText = `正在下載模型: ${fileName}...`;
     
     try {
       const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`找不到檔案: ${fileName}`);
-      const text = await resp.clone().text();
-      if (text.trim().startsWith('<!DOCTYPE')) throw new Error(`${fileName} 路徑錯誤，抓到了 HTML 網頁`);
+      if (!resp.ok) throw new Error(`找不到檔案 (HTTP ${resp.status})`);
+      
+      const blob = await resp.blob();
+      // 檢查是否誤抓到 HTML 404 頁面 (HTML 通常很小且 type 是 text/html)
+      if (blob.type.includes("html") || blob.size < 500) {
+        throw new Error(`${fileName} 檔案內容異常，請確認路徑大小寫是否正確。`);
+      }
 
-      return new Promise((res, rej) => loader.load(url, res, undefined, rej));
+      return new Promise((res, rej) => {
+        const reader = new FileReader();
+        loader.load(url, res, undefined, rej);
+      });
     } catch (e) {
-      console.error(e);
-      throw e;
+      throw new Error(`[載入失敗] ${fileName}: ${e.message}`);
     }
   }
 
   const mindarThree = new MindARThree({
     container: document.getElementById('container'),
-    imageTargetSrc: 'targets.mind',
+    imageTargetSrc: getCorrectPath('targets.mind'),
     uiLoading: 'yes', uiScanning: 'yes', uiError: 'yes',
   });
 
@@ -89,22 +103,21 @@
   document.body.onclick = () => {
     if (state === 'model1') {
       state = 'model2a';
-      play(mountModel(cache.model2), 0, SEGMENT.s1_end, true);
-      msg.innerText = "播放 Model 2 (循環中)";
+      play(mountModel(cache.model2), 0, 20, true);
+      msg.innerText = "Model 2 循環中 (點擊切換下階段)";
     } else if (state === 'model2a') {
       state = 'model2b';
-      msg.innerText = "即將進入 Model 3...";
-      play(cache.model2.animations, SEGMENT.s2_start, SEGMENT.s2_end, false, () => {
+      msg.innerText = "過渡中...";
+      play(cache.model2.animations, 20, 60, false, () => {
         state = 'model3';
         play(mountModel(cache.model3), 0, 100, true);
-        msg.innerText = "播放 Model 3 (循環中)";
+        msg.innerText = "Model 3 循環中";
       });
     }
   };
 
   async function init() {
     try {
-      msg.innerText = "正在載入模型檔案...";
       const [m1, m2, m3] = await Promise.all([
         loadGLB('model1.glb'),
         loadGLB('model2.glb'),
@@ -112,15 +125,14 @@
       ]);
       cache.model1 = m1; cache.model2 = m2; cache.model3 = m3;
 
-      msg.innerText = "載入成功，請允許相機權限";
-      const clips = mountModel(cache.model1);
-      play(clips, 0, 100, false);
+      msg.innerText = "載入成功！請點擊畫面並允許相機權限";
+      play(mountModel(cache.model1), 0, 100, false);
 
       await mindarThree.start();
-      msg.innerText = "AR 已啟動，請掃描識別圖";
+      msg.innerText = "AR 啟動！請掃描識別圖";
     } catch (e) {
-      msg.style.background = "red";
-      msg.innerText = "初始化失敗: " + e.message;
+      msg.style.background = "#ff4d4d";
+      msg.innerText = e.message;
       console.error(e);
     }
   }
