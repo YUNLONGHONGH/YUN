@@ -24,130 +24,15 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- =====================================================  -->
-    <!-- 🟡 光源區域 - 控制模型的打光效果                      -->
-    <!-- =====================================================  -->
-
-    <!-- 🟡 金色點光源（照亮模型正面） -->
-    <a-light type="point" color="#FFE066" intensity="2" position="0 0.5 0.3"></a-light>
-
-    <!-- 🟣 紫色點光源（側面補光，增加神秘感） -->
-    <a-light type="point" color="#CC44FF" intensity="1.5" position="-0.5 0.3 0"></a-light>
-
-    <!-- 🔵 藍色點光源（背面輪廓光，讓模型更立體） -->
-    <a-light type="point" color="#44AAFF" intensity="1.5" position="0.5 0.2 -0.3"></a-light>
-
-    <!-- ⚪ 環境光（整體亮度，避免暗面太黑） -->
-    <a-light type="ambient" color="#FFFFFF" intensity="0.8"></a-light>
-
-    <!-- ===================================================== -->
-    <!-- 錨點：偵測到卡片後，所有東西顯示在這裡                -->
-    <!-- ===================================================== -->
     <a-entity mindar-image-target="targetIndex: 0">
-
-      <!-- ===================================================== -->
-      <!-- 🟠 模型本體 - 最重要的區域                            -->
-      <!-- ===================================================== -->
       <a-gltf-model
         src="#model"
-        position="0 0.1 0"
+        position="0 0 0"
         scale="0.5 0.5 0.5"
-        rotation="-90 0 0"
         animation-mixer
-
-        animation="property: rotation;
-                   from: -90 0 0;
-                   to: -90 360 0;
-                   loop: true;
-                   dur: 4000;
-                   easing: linear"
-
-        animation__float="property: position;
-                          from: 0 0.05 0;
-                          to: 0 0.15 0;
-                          loop: true;
-                          dur: 1500;
-                          easing: easeInOutSine;
-                          dir: alternate"
-      ></a-gltf-model>
-
-      <!-- ===================================================== -->
-      <!-- 🔵 魔法陣 - 地板旋轉環                               -->
-      <!-- ===================================================== -->
-
-      <!-- 🔵 外圈金色旋轉環 -->
-      <a-torus
-        position="0 0 0"
-        rotation="90 0 0"
-        radius="0.22"
-        radius-tubular="0.005"
-        color="#FFE066"
-        material="emissive: #FFE066; emissiveIntensity: 0.8;"
-        animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 3000; easing: linear"
-      ></a-torus>
-
-      <!-- 🔵 中圈粉色旋轉環（反向） -->
-      <a-torus
-        position="0 0 0"
-        rotation="90 0 0"
-        radius="0.16"
-        radius-tubular="0.004"
-        color="#FF44CC"
-        material="emissive: #FF44CC; emissiveIntensity: 0.8;"
-        animation="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 2000; easing: linear"
-      ></a-torus>
-
-      <!-- 🔵 內圈藍色旋轉環 -->
-      <a-torus
-        position="0 0 0"
-        rotation="90 0 0"
-        radius="0.10"
-        radius-tubular="0.003"
-        color="#44CCFF"
-        material="emissive: #44CCFF; emissiveIntensity: 0.8;"
-        animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 1500; easing: linear"
-      ></a-torus>
-
-      <!-- ===================================================== -->
-      <!-- ⭐ 衛星方塊 - 繞著模型旁邊的彩色小方塊              -->
-      <!-- ===================================================== -->
-
-      <!-- ⭐ 衛星1：金色 -->
-      <a-box
-        position="0.22 0.08 0"
-        scale="0.02 0.02 0.02"
-        color="#FFE066"
-        material="emissive: #FFE066; emissiveIntensity: 1;"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 800; easing: linear"
-      ></a-box>
-
-      <!-- ⭐ 衛星2：青色 -->
-      <a-box
-        position="-0.22 0.12 0"
-        scale="0.018 0.018 0.018"
-        color="#00FFFF"
-        material="emissive: #00FFFF; emissiveIntensity: 1;"
-        animation="property: rotation; to: 360 0 0; loop: true; dur: 600; easing: linear"
-      ></a-box>
-
-      <!-- ⭐ 衛星3：粉色 -->
-      <a-box
-        position="0 0.10 0.22"
-        scale="0.016 0.016 0.016"
-        color="#FF44CC"
-        material="emissive: #FF44CC; emissiveIntensity: 1;"
-        animation="property: rotation; to: 0 0 360; loop: true; dur: 700; easing: linear"
-      ></a-box>
-
-      <!-- ⭐ 衛星4：紫色 -->
-      <a-box
-        position="0 0.06 -0.22"
-        scale="0.015 0.015 0.015"
-        color="#AA44FF"
-        material="emissive: #AA44FF; emissiveIntensity: 1;"
-        animation="property: rotation; to: 360 360 0; loop: true; dur: 500; easing: linear"
-      ></a-box>
-
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
+      >
+      </a-gltf-model>
     </a-entity>
   </a-scene>
 </body>
