@@ -3,6 +3,11 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; }
+    body { overflow: hidden; background: #000; }
+    #container { width: 100vw; height: 100vh; }
+  </style>
   <script type="importmap">
   {
     "imports": {
@@ -12,138 +17,65 @@
     }
   }
   </script>
-  <style>
-    * { margin: 0; padding: 0; }
-    body { overflow: hidden; background: #000; font-family: sans-serif; }
-    #container { width: 100vw; height: 100vh; }
-    #ui-msg { 
-      position: fixed; top: 20px; left: 20px; color: white; 
-      background: rgba(0,0,0,0.7); padding: 12px; z-index: 1000; 
-      border-radius: 8px; font-size: 14px; line-height: 1.5;
-    }
-  </style>
 </head>
 <body>
-<div id="ui-msg">正在初始化環境...</div>
 <div id="container"></div>
-
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
 
-  const msg = document.getElementById('ui-msg');
-  const FPS = 24;
-  const cache = {};
-  let state = 'model1', activeModel = null, mixer = null;
-  const clock = new THREE.Clock();
-
-  // 取得當前正確的基礎路徑，確保 GitHub Pages 子目錄不會出錯
-  const getCorrectPath = (file) => {
-    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf("/") + 1);
-    return baseUrl + file;
-  };
-
-  async function loadGLB(fileName) {
-    const loader = new GLTFLoader();
-    const url = getCorrectPath(fileName);
-    
-    msg.innerText = `正在下載模型: ${fileName}...`;
-    
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`找不到檔案 (HTTP ${resp.status})`);
-      
-      const blob = await resp.blob();
-      // 檢查是否誤抓到 HTML 404 頁面 (HTML 通常很小且 type 是 text/html)
-      if (blob.type.includes("html") || blob.size < 500) {
-        throw new Error(`${fileName} 檔案內容異常，請確認路徑大小寫是否正確。`);
-      }
-
-      return new Promise((res, rej) => {
-        const reader = new FileReader();
-        loader.load(url, res, undefined, rej);
-      });
-    } catch (e) {
-      throw new Error(`[載入失敗] ${fileName}: ${e.message}`);
-    }
-  }
-
   const mindarThree = new MindARThree({
     container: document.getElementById('container'),
-    imageTargetSrc: getCorrectPath('targets.mind'),
-    uiLoading: 'yes', uiScanning: 'yes', uiError: 'yes',
+    imageTargetSrc: 'targets.mind', // 建議移除 ./
+    uiLoading: 'no', uiScanning: 'no', uiError: 'no',
   });
 
   const { renderer, scene, camera } = mindarThree;
   const anchor = mindarThree.addAnchor(0);
+
   scene.add(new THREE.AmbientLight(0xffffff, 1));
+  const light = new THREE.PointLight(0xffaa00, 3, 6);
+  light.position.set(1, 2, 1);
+  scene.add(light);
 
-  function mountModel(gltf) {
-    if (activeModel) anchor.group.remove(activeModel);
-    activeModel = gltf.scene.clone();
-    activeModel.scale.setScalar(0.15);
-    activeModel.position.y = 0.05;
-    anchor.group.add(activeModel);
-    mixer = new THREE.AnimationMixer(activeModel);
-    return gltf.animations || [];
-  }
+  const loader = new GLTFLoader();
+  
+  // 注意：這裡改為 model1.glb，因為你 GitHub 上的檔案是這個名字
+  loader.load('model1.glb', function(gltf) {
+    const model = gltf.scene;
+    model.scale.set(0.15, 0.15, 0.15);
+    model.position.y = 0.05;
+    anchor.group.add(model);
 
-  function play(clips, start, end, loop, onEnd) {
-    if (!mixer || !clips.length) return onEnd?.();
-    mixer.stopAllAction();
-    clips.forEach(c => {
-      const sub = THREE.AnimationUtils.subclip(c, c.name, start, end, FPS);
-      const action = mixer.clipAction(sub);
-      action.reset().setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity).play();
-    });
-    if (!loop && onEnd) setTimeout(onEnd, ((end - start) / FPS) * 1000);
-  }
-
-  document.body.onclick = () => {
-    if (state === 'model1') {
-      state = 'model2a';
-      play(mountModel(cache.model2), 0, 20, true);
-      msg.innerText = "Model 2 循環中 (點擊切換下階段)";
-    } else if (state === 'model2a') {
-      state = 'model2b';
-      msg.innerText = "過渡中...";
-      play(cache.model2.animations, 20, 60, false, () => {
-        state = 'model3';
-        play(mountModel(cache.model3), 0, 100, true);
-        msg.innerText = "Model 3 循環中";
+    const mixer = new THREE.AnimationMixer(model);
+    if (gltf.animations.length > 0) {
+      gltf.animations.forEach(function(clip) {
+        mixer.clipAction(clip).play();
       });
     }
-  };
 
-  async function init() {
-    try {
-      const [m1, m2, m3] = await Promise.all([
-        loadGLB('model1.glb'),
-        loadGLB('model2.glb'),
-        loadGLB('model3.glb')
-      ]);
-      cache.model1 = m1; cache.model2 = m2; cache.model3 = m3;
-
-      msg.innerText = "載入成功！請點擊畫面並允許相機權限";
-      play(mountModel(cache.model1), 0, 100, false);
-
-      await mindarThree.start();
-      msg.innerText = "AR 啟動！請掃描識別圖";
-    } catch (e) {
-      msg.style.background = "#ff4d4d";
-      msg.innerText = e.message;
-      console.error(e);
-    }
-  }
-
-  renderer.setAnimationLoop(() => {
-    if (mixer) mixer.update(clock.getDelta());
-    if (activeModel) activeModel.position.y = 0.05 + Math.sin(Date.now() * 0.002) * 0.01;
-    renderer.render(scene, camera);
+    const clock = new THREE.Clock();
+    let t = 0;
+    renderer.setAnimationLoop(function() {
+      const delta = clock.getDelta();
+      t += delta;
+      mixer.update(delta);
+      model.rotation.y += 0.02;
+      model.position.y = 0.05 + Math.sin(t * 1.5) * 0.03;
+      renderer.render(scene, camera);
+    });
+  }, undefined, function(error) {
+    // 如果載入失敗，會彈出錯誤提示
+    console.error(error);
+    alert("模型載入失敗，請檢查檔案是否存在: " + error.message);
   });
 
-  init();
+  // 啟動相機 (請確保在 https 環境下執行)
+  mindarThree.start().catch(err => {
+    console.error(err);
+    if (err.name === 'NotAllowedError') alert("請允許相機權限");
+  });
 </script>
 </body>
 </html>
