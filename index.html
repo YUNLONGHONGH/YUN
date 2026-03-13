@@ -8,9 +8,7 @@
     "imports": {
       "three": "https://unpkg.com/three@0.134.0/build/three.module.js",
       "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.134.0/examples/jsm/loaders/GLTFLoader.js",
-      "three/examples/jsm/": "https://unpkg.com/three@0.134.0/examples/jsm/",
-      "three/addons/": "https://unpkg.com/three@0.134.0/examples/jsm/",
-      "three/addons/renderers/CSS3DRenderer.js": "https://unpkg.com/three@0.134.0/examples/jsm/renderers/CSS3DRenderer.js"
+      "three/examples/jsm/": "https://unpkg.com/three@0.134.0/examples/jsm/"
     }
   }
   </script>
@@ -27,24 +25,20 @@
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
 
-  // ═══════════════════════════════
-  //  ★ 參數設定區 ★
-  // ═══════════════════════════════
   const FPS = 24;
   const SEGMENT = {
-    s1_start: 0,   // 第 0 格
-    s1_end:   20,  // 第 20 格
+    s1_start: 0,
+    s1_end: 20,
     s2_start: 20,
-    s2_end:   60,
+    s2_end: 60,
   };
 
   const MODEL_SCALE = 0.15;
-  const MODEL_Y     = 0.05;
-  // ═══════════════════════════════
+  const MODEL_Y = 0.05;
 
   const mindarThree = new MindARThree({
     container: document.getElementById('container'),
-    imageTargetSrc: './targets.mind', // 請確認此檔案存在
+    imageTargetSrc: 'targets.mind', // 移除 ./
     uiLoading: 'no', uiScanning: 'no', uiError: 'no',
   });
 
@@ -56,37 +50,36 @@
   light.position.set(1, 2, 1);
   scene.add(light);
 
-  let state         = 'model1';
-  let activeModel   = null;
-  let mixer         = null;
-  const clock       = new THREE.Clock();
-  let t             = 0;
-  const cache       = {};
+  let state = 'model1';
+  let activeModel = null;
+  let mixer = null;
+  const clock = new THREE.Clock();
+  let t = 0;
+  const cache = {};
 
-  // 載入器加入錯誤捕捉
-  function loadGLB(path) {
-    return new Promise((res, rej) => {
-      new GLTFLoader().load(
-        path, 
-        (gltf) => res(gltf),
-        undefined,
-        (err) => {
-          console.error(`無法載入模型: ${path}`, err);
-          rej(err);
-        }
-      );
+  // 改進的載入器：先檢查 Content-Type 避免抓到 404 HTML
+  async function loadGLB(path) {
+    const loader = new GLTFLoader();
+    const response = await fetch(path);
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}: 無法找到檔案 ${path}`);
+    
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("text/html")) {
+      throw new Error(`路徑錯誤：抓到的是網頁(404)而非模型檔 (${path})`);
+    }
+
+    return new Promise((resolve, reject) => {
+      loader.load(path, resolve, undefined, reject);
     });
   }
 
   function mountModel(gltf) {
     if (activeModel) anchor.group.remove(activeModel);
-    
-    // 使用 clone 確保原始資料不被破壞
     const model = gltf.scene.clone();
     model.scale.setScalar(MODEL_SCALE);
     model.position.y = MODEL_Y;
     anchor.group.add(model);
-    
     activeModel = model;
     mixer = new THREE.AnimationMixer(model);
     return { clips: gltf.animations || [] };
@@ -94,20 +87,15 @@
 
   function playSegment(clips, startFrame, endFrame, loop, onEnd) {
     if (!mixer || clips.length === 0) {
-      if (onEnd) setTimeout(onEnd, 100);
+      if (onEnd) onEnd();
       return;
     }
     mixer.stopAllAction();
-
     clips.forEach(clip => {
-      // subclip 參數：(原始片段, 名字, 開始格, 結束格, FPS)
-      const subClip = THREE.AnimationUtils.subclip(
-        clip, clip.name, startFrame, endFrame, FPS
-      );
+      const subClip = THREE.AnimationUtils.subclip(clip, clip.name, startFrame, endFrame, FPS);
       const action = mixer.clipAction(subClip);
       action.reset();
       action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
-      action.clampWhenFinished = !loop; 
       action.play();
     });
 
@@ -120,10 +108,8 @@
   function showModel1() {
     state = 'model1';
     const { clips } = mountModel(cache.model1);
-    if (clips.length > 0) {
-      const totalFrames = Math.floor(clips[0].duration * FPS);
-      playSegment(clips, 0, totalFrames, false, null);
-    }
+    const totalFrames = clips[0] ? Math.floor(clips[0].duration * FPS) : 100;
+    playSegment(clips, 0, totalFrames, false, null);
   }
 
   function showModel2a() {
@@ -143,14 +129,12 @@
   function showModel3() {
     state = 'model3';
     const { clips } = mountModel(cache.model3);
-    if (clips.length > 0) {
-      const totalFrames = Math.floor(clips[0].duration * FPS);
-      playSegment(clips, 0, totalFrames, true, null);
-    }
+    const totalFrames = clips[0] ? Math.floor(clips[0].duration * FPS) : 100;
+    playSegment(clips, 0, totalFrames, true, null);
   }
 
   document.getElementById('container').addEventListener('click', () => {
-    if      (state === 'model1')  showModel2a();
+    if (state === 'model1') showModel2a();
     else if (state === 'model2a') showModel2b();
   });
 
@@ -164,11 +148,11 @@
 
   async function init() {
     try {
-      // 確保路徑與檔案名稱完全正確
+      // 移除路徑前的 ./ 避免 GitHub Pages 映射錯誤
       const [g1, g2, g3] = await Promise.all([
-        loadGLB('./model1.glb'),
-        loadGLB('./model2.glb'),
-        loadGLB('./model3.glb'),
+        loadGLB('model1.glb'),
+        loadGLB('model2.glb'),
+        loadGLB('model3.glb'),
       ]);
       cache.model1 = g1;
       cache.model2 = g2;
@@ -177,7 +161,8 @@
       showModel1();
       await mindarThree.start();
     } catch(e) {
-      alert('初始化失敗，請檢查網路連接或檔案路徑。');
+      console.error(e);
+      alert(e.message);
     }
   }
 
