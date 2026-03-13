@@ -16,11 +16,11 @@
     * { margin: 0; padding: 0; }
     body { overflow: hidden; background: #000; font-family: sans-serif; }
     #container { width: 100vw; height: 100vh; }
-    #ui-msg { position: fixed; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.6); padding: 8px; z-index: 1000; border-radius: 4px; pointer-events: none; }
+    #status-ui { position: fixed; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; z-index: 1000; border-radius: 5px; }
   </style>
 </head>
 <body>
-<div id="ui-msg">系統初始化中...</div>
+<div id="status-ui">正在初始化 AR...</div>
 <div id="container"></div>
 
 <script type="module">
@@ -28,18 +28,28 @@
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { MindARThree } from 'https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
 
-  const msg = document.getElementById('ui-msg');
-  const FPS = 24;
-  const SEGMENT = {
-    s1_start: 0, 
-    s1_end: 20,
-    s2_start: 20,
-    s2_end: 60
-  };
+  const status = document.getElementById('status-ui');
+  const cache = {};
+  let state = 'model1', activeModel = null, mixer = null;
+  const clock = new THREE.Clock();
+
+  // 強制清除快取的載入函式
+  async function loadModel(name) {
+    const loader = new GLTFLoader();
+    // 加上 v= 參數強迫 GitHub 重新讀取檔案，不要讀舊的 404 快取
+    const url = `${name}?v=${Date.now()}`;
+    status.innerText = `正在下載: ${name}`;
+    
+    return new Promise((resolve, reject) => {
+      loader.load(url, resolve, undefined, (err) => {
+        reject(new Error(`檔案載入失敗: ${name}。請確認檔名大小寫正確。`));
+      });
+    });
+  }
 
   const mindarThree = new MindARThree({
     container: document.getElementById('container'),
-    imageTargetSrc: 'targets.mind', // 確保名稱與 GitHub 上的 targets.mind 完全一致
+    imageTargetSrc: 'targets.mind',
     uiLoading: 'yes', uiScanning: 'yes', uiError: 'yes',
   });
 
@@ -47,95 +57,41 @@
   const anchor = mindarThree.addAnchor(0);
   scene.add(new THREE.AmbientLight(0xffffff, 1));
 
-  let state = 'model1', activeModel = null, mixer = null;
-  const clock = new THREE.Clock();
-  const cache = {};
-
-  async function loadGLB(path) {
-    const loader = new GLTFLoader();
-    return new Promise((resolve, reject) => {
-      loader.load(path, resolve, undefined, (err) => reject(new Error(`無法載入 ${path}`)));
-    });
-  }
-
-  function mountModel(gltf) {
+  function setModel(gltf) {
     if (activeModel) anchor.group.remove(activeModel);
     activeModel = gltf.scene.clone();
     activeModel.scale.setScalar(0.15);
     activeModel.position.y = 0.05;
     anchor.group.add(activeModel);
     mixer = new THREE.AnimationMixer(activeModel);
-    return gltf.animations || [];
-  }
-
-  function playSegment(clips, startFrame, endFrame, loop, onEnd) {
-    if (!mixer || clips.length === 0) return onEnd?.();
-    mixer.stopAllAction();
-    clips.forEach(clip => {
-      const sub = THREE.AnimationUtils.subclip(clip, clip.name, startFrame, endFrame, FPS);
-      const action = mixer.clipAction(sub);
-      action.reset().setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity).play();
-      if (!loop) action.clampWhenFinished = true;
-    });
-    if (!loop && onEnd) setTimeout(onEnd, ((endFrame - startFrame) / FPS) * 1000);
-  }
-
-  // 狀態轉換邏輯
-  const actions = {
-    showM1: () => {
-      state = 'model1';
-      const clips = mountModel(cache.model1);
-      playSegment(clips, 0, clips[0] ? clips[0].duration * FPS : 100, false);
-      msg.innerText = "Model 1 播放中 (點擊切換)";
-    },
-    showM2a: () => {
-      state = 'model2a';
-      const clips = mountModel(cache.model2);
-      playSegment(clips, SEGMENT.s1_start, SEGMENT.s1_end, true);
-      msg.innerText = "Model 2 循環中 (點擊切換)";
-    },
-    showM2b: () => {
-      state = 'model2b';
-      playSegment(cache.model2.animations, SEGMENT.s2_start, SEGMENT.s2_end, false, actions.showM3);
-      msg.innerText = "Model 2 過渡中...";
-    },
-    showM3: () => {
-      state = 'model3';
-      const clips = mountModel(cache.model3);
-      playSegment(clips, 0, clips[0] ? clips[0].duration * FPS : 100, true);
-      msg.innerText = "Model 3 循環播放";
+    if (gltf.animations.length > 0) {
+      gltf.animations.forEach(clip => mixer.clipAction(clip).play());
     }
-  };
-
-  document.body.onclick = () => {
-    if (state === 'model1') actions.showM2a();
-    else if (state === 'model2a') actions.showM2b();
-  };
-
-  renderer.setAnimationLoop(() => {
-    if (mixer) mixer.update(clock.getDelta());
-    if (activeModel) activeModel.position.y = 0.05 + Math.sin(Date.now() * 0.002) * 0.01;
-    renderer.render(scene, camera);
-  });
+  }
 
   async function init() {
     try {
-      msg.innerText = "正在下載資源...";
       const [m1, m2, m3] = await Promise.all([
-        loadGLB('model1.glb'),
-        loadGLB('model2.glb'),
-        loadGLB('model3.glb')
+        loadModel('model1.glb'),
+        loadModel('model2.glb'),
+        loadModel('model3.glb')
       ]);
       cache.model1 = m1; cache.model2 = m2; cache.model3 = m3;
       
-      actions.showM1();
+      setModel(cache.model1);
       await mindarThree.start();
-      msg.innerText = "AR 已啟動，請掃描識別圖";
+      status.innerText = "AR 已啟動，請掃描識別圖";
     } catch (e) {
-      msg.style.background = "red";
-      msg.innerText = "初始化錯誤: " + e.message;
+      status.innerText = e.message;
+      status.style.background = "red";
+      console.error(e);
     }
   }
+
+  renderer.setAnimationLoop(() => {
+    if (mixer) mixer.update(clock.getDelta());
+    renderer.render(scene, camera);
+  });
 
   init();
 </script>
