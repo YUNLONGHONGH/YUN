@@ -1,70 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta charset="UTF-8" />
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <style>
     * { margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; overflow: hidden; }
-
-    a-scene {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-    }
-
-    /* 強制讓所有 video 元素可見 */
-    video {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      position: fixed !important;
-      top: 0 !important; left: 0 !important;
-      width: 100% !important; height: 100% !important;
-      object-fit: cover !important;
-      z-index: -1 !important;
-    }
-
-    canvas {
-      position: fixed !important;
-      top: 0 !important; left: 0 !important;
-      width: 100% !important; height: 100% !important;
-    }
-
-    #pixel-canvas {
-      z-index: 999 !important;
-      pointer-events: none;
-      image-rendering: pixelated;
-    }
-
-    /* 診斷用訊息框 */
-    #debug {
-      position: fixed;
-      top: 10px; left: 10px;
-      z-index: 9999;
-      background: rgba(0,0,0,0.7);
-      color: #0f0;
-      font-size: 11px;
-      padding: 8px;
-      border-radius: 6px;
-      max-width: 90vw;
-      word-break: break-all;
-      pointer-events: none;
-    }
+    body { overflow: hidden; }
   </style>
 </head>
 <body>
 
-<div id="debug">啟動中...</div>
-<canvas id="pixel-canvas"></canvas>
-
 <a-scene
   mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
   color-space="sRGB"
-  renderer="colorManagement: true; alpha: true;"
-  embedded
+  renderer="colorManagement: true;"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
 >
@@ -75,122 +26,18 @@
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
   <a-entity mindar-image-target="targetIndex: 0">
-    <a-light type="point" color="#FFE066" intensity="3" position="0 0.5 0.3"></a-light>
-    <a-light type="point" color="#00FFFF" intensity="2" position="0 -0.2 0.3"></a-light>
 
+    <!-- 模型 -->
     <a-gltf-model
       src="#model"
+      position="0 0 0"
       scale="0.5 0.5 0.5"
-      position="0 0.05 0"
-      animation-mixer="clip: *; loop: repeat"
-      animation__float="property: position; from: 0 0.02 0; to: 0 0.10 0; loop: true; dur: 1400; easing: easeInOutSine; dir: alternate"
+      animation-mixer
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
     ></a-gltf-model>
 
-    <a-torus position="0 0.01 0" rotation="90 0 0"
-      radius="0.22" radius-tubular="0.008" segments-tubular="12"
-      color="#FFE066" material="emissive: #FFE066; emissiveIntensity: 1.5; shader: flat"
-      animation__r1="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 3000; easing: linear">
-    </a-torus>
-
-    <a-torus position="0 0.01 0" rotation="90 0 0"
-      radius="0.15" radius-tubular="0.006" segments-tubular="12"
-      color="#00FFFF" material="emissive: #00FFFF; emissiveIntensity: 1.5; shader: flat"
-      animation__r2="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 2000; easing: linear">
-    </a-torus>
   </a-entity>
 </a-scene>
-
-<script>
-const dbg = document.getElementById('debug');
-function log(msg) {
-  dbg.innerHTML += '<br>' + msg;
-  console.log(msg);
-}
-
-// 監聽相機 video 出現
-const observer = new MutationObserver(() => {
-  const videos = document.querySelectorAll('video');
-  if (videos.length > 0) {
-    log('✅ 找到 video 元素: ' + videos.length + '個');
-    videos.forEach((v, i) => {
-      log('video[' + i + '] display:' + getComputedStyle(v).display +
-          ' w:' + v.videoWidth + ' h:' + v.videoHeight);
-    });
-  }
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-// A-Frame 事件
-document.querySelector('a-scene').addEventListener('loaded', () => {
-  log('✅ A-Frame loaded');
-});
-
-document.querySelector('a-scene').addEventListener('arReady', () => {
-  log('✅ AR Ready!');
-});
-
-document.querySelector('a-scene').addEventListener('arError', (e) => {
-  log('❌ AR Error: ' + JSON.stringify(e.detail));
-});
-
-// 3秒後強制檢查
-setTimeout(() => {
-  const videos = document.querySelectorAll('video');
-  log('--- 3秒檢查 ---');
-  log('video數量: ' + videos.length);
-  videos.forEach((v, i) => {
-    const cs = getComputedStyle(v);
-    log('v['+i+'] vis:'+cs.visibility+' op:'+cs.opacity+' z:'+cs.zIndex);
-  });
-  const aCanvas = document.querySelector('a-scene canvas');
-  if (aCanvas) {
-    const cs = getComputedStyle(aCanvas);
-    log('a-canvas z:'+cs.zIndex+' pos:'+cs.position);
-  }
-}, 3000);
-
-// 像素粒子
-const canvas = document.getElementById('pixel-canvas');
-const ctx = canvas.getContext('2d');
-function resize() {
-  canvas.width  = Math.floor(window.innerWidth  / 3);
-  canvas.height = Math.floor(window.innerHeight / 3);
-  canvas.style.width  = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
-}
-resize();
-window.addEventListener('resize', resize);
-
-const COLORS = ['#FFE066','#FF8C00','#FF00FF','#00FFFF','#00FF41','#FF2020','#FFFFFF','#BF00FF'];
-class Pixel {
-  constructor() { this.reset(true); }
-  reset(init=false) {
-    this.x=Math.random()*canvas.width;
-    this.y=init?Math.random()*canvas.height:canvas.height+2;
-    this.size=1+Math.floor(Math.random()*3);
-    this.vy=-(0.3+Math.random()*0.8);
-    this.vx=(Math.random()-0.5)*0.4;
-    this.life=init?Math.random():1;
-    this.decay=0.006+Math.random()*0.010;
-    this.color=COLORS[Math.floor(Math.random()*COLORS.length)];
-    this.blinkSpeed=3+Math.random()*6;
-    this.blinkT=Math.random()*Math.PI*2;
-    this.doBlink=Math.random()>0.4;
-  }
-  update(dt){this.x+=this.vx;this.y+=this.vy;this.life-=this.decay;this.blinkT+=this.blinkSpeed*dt;if(this.life<=0)this.reset();}
-  draw(){if(this.doBlink&&Math.sin(this.blinkT)<0)return;ctx.globalAlpha=Math.max(0,this.life)*0.85;ctx.fillStyle=this.color;ctx.fillRect(Math.floor(this.x),Math.floor(this.y),this.size,this.size);}
-}
-const pixels=[];
-for(let i=0;i<100;i++)pixels.push(new Pixel());
-let lastTime=0;
-function loop(ts){
-  requestAnimationFrame(loop);
-  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;
-  ctx.globalAlpha=0.2;ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
-  pixels.forEach(p=>{p.update(dt);p.draw();});
-}
-requestAnimationFrame(loop);
-</script>
 
 </body>
 </html>
