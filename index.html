@@ -3,130 +3,194 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta charset="UTF-8" />
-  <title>AR Birthday Card</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
 
-    /* 確保像素粒子層是透明的，且不會阻擋點擊 */
-    #pixel-canvas {
+    a-scene {
       position: fixed;
       top: 0; left: 0;
-      width: 100vw; height: 100vh;
+      width: 100%; height: 100%;
+    }
+
+    /* 強制讓所有 video 元素可見 */
+    video {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: fixed !important;
+      top: 0 !important; left: 0 !important;
+      width: 100% !important; height: 100% !important;
+      object-fit: cover !important;
+      z-index: -1 !important;
+    }
+
+    canvas {
+      position: fixed !important;
+      top: 0 !important; left: 0 !important;
+      width: 100% !important; height: 100% !important;
+    }
+
+    #pixel-canvas {
+      z-index: 999 !important;
       pointer-events: none;
-      z-index: 10; /* 放在 AR 畫面上方 */
       image-rendering: pixelated;
     }
 
-    /* 隱藏 MindAR 預設的 UI，讓畫面乾淨 */
-    .mindar-ui-overlay { display: none !important; }
+    /* 診斷用訊息框 */
+    #debug {
+      position: fixed;
+      top: 10px; left: 10px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.7);
+      color: #0f0;
+      font-size: 11px;
+      padding: 8px;
+      border-radius: 6px;
+      max-width: 90vw;
+      word-break: break-all;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
-  <canvas id="pixel-canvas"></canvas>
+<div id="debug">啟動中...</div>
+<canvas id="pixel-canvas"></canvas>
 
-  <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
-    color-space="sRGB"
-    renderer="colorManagement: true; alpha: true; antialias: true;"
-    embedded
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-  >
-    <a-assets>
-      <a-asset-item id="model" src="./model.glb"></a-asset-item>
-    </a-assets>
+<a-scene
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+  color-space="sRGB"
+  renderer="colorManagement: true; alpha: true;"
+  embedded
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-assets>
+    <a-asset-item id="model" src="./model.glb"></a-asset-item>
+  </a-assets>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-entity mindar-image-target="targetIndex: 0">
-      
-      <a-light type="ambient" intensity="0.8"></a-light>
-      <a-light type="point" color="#FFE066" intensity="2" position="0 1 1"></a-light>
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-light type="point" color="#FFE066" intensity="3" position="0 0.5 0.3"></a-light>
+    <a-light type="point" color="#00FFFF" intensity="2" position="0 -0.2 0.3"></a-light>
 
-      <a-gltf-model
-        src="#model"
-        scale="0.2 0.2 0.2"
-        position="0 0 0"
-        animation-mixer
-        animation__spin="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
-        animation__float="property: position; from: 0 0 0; to: 0 0.1 0; loop: true; dur: 2000; easing: easeInOutSine; dir: alternate"
-      ></a-gltf-model>
+    <a-gltf-model
+      src="#model"
+      scale="0.5 0.5 0.5"
+      position="0 0.05 0"
+      animation-mixer="clip: *; loop: repeat"
+      animation__float="property: position; from: 0 0.02 0; to: 0 0.10 0; loop: true; dur: 1400; easing: easeInOutSine; dir: alternate"
+    ></a-gltf-model>
 
-      <a-torus radius="0.25" radius-tubular="0.005" color="#FFE066" rotation="90 0 0"
-        material="shader: flat; opacity: 0.8"
-        animation="property: rotation; to: 90 360 0; loop: true; dur: 4000; easing: linear">
-      </a-torus>
+    <a-torus position="0 0.01 0" rotation="90 0 0"
+      radius="0.22" radius-tubular="0.008" segments-tubular="12"
+      color="#FFE066" material="emissive: #FFE066; emissiveIntensity: 1.5; shader: flat"
+      animation__r1="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 3000; easing: linear">
+    </a-torus>
 
-      <a-torus radius="0.32" radius-tubular="0.005" color="#00FFFF" rotation="90 0 0"
-        material="shader: flat; opacity: 0.6"
-        animation="property: rotation; to: 90 -360 0; loop: true; dur: 6000; easing: linear">
-      </a-torus>
+    <a-torus position="0 0.01 0" rotation="90 0 0"
+      radius="0.15" radius-tubular="0.006" segments-tubular="12"
+      color="#00FFFF" material="emissive: #00FFFF; emissiveIntensity: 1.5; shader: flat"
+      animation__r2="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 2000; easing: linear">
+    </a-torus>
+  </a-entity>
+</a-scene>
 
-      <a-box size="0.03" color="#FF00FF" position="0.3 0.1 0"
-        animation="property: position; to: 0.3 0.2 0; loop: true; dur: 1500; dir: alternate; easing: easeInOutSine">
-      </a-box>
-    </a-entity>
-  </a-scene>
+<script>
+const dbg = document.getElementById('debug');
+function log(msg) {
+  dbg.innerHTML += '<br>' + msg;
+  console.log(msg);
+}
 
-  <script>
-    // --- 像素粒子邏輯 (修正全黑問題版) ---
-    const canvas = document.getElementById('pixel-canvas');
-    const ctx = canvas.getContext('2d');
+// 監聽相機 video 出現
+const observer = new MutationObserver(() => {
+  const videos = document.querySelectorAll('video');
+  if (videos.length > 0) {
+    log('✅ 找到 video 元素: ' + videos.length + '個');
+    videos.forEach((v, i) => {
+      log('video[' + i + '] display:' + getComputedStyle(v).display +
+          ' w:' + v.videoWidth + ' h:' + v.videoHeight);
+    });
+  }
+});
+observer.observe(document.body, { childList: true, subtree: true });
 
-    function resize() {
-      canvas.width = Math.floor(window.innerWidth / 3);
-      canvas.height = Math.floor(window.innerHeight / 3);
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-    }
-    resize();
-    window.addEventListener('resize', resize);
+// A-Frame 事件
+document.querySelector('a-scene').addEventListener('loaded', () => {
+  log('✅ A-Frame loaded');
+});
 
-    const COLORS = ['#FFE066','#FF8C00','#FF00FF','#00FFFF','#00FF41','#FF2020','#FFFFFF'];
+document.querySelector('a-scene').addEventListener('arReady', () => {
+  log('✅ AR Ready!');
+});
 
-    class Pixel {
-      constructor() { this.reset(true); }
-      reset(init = false) {
-        this.x = Math.random() * canvas.width;
-        this.y = init ? Math.random() * canvas.height : canvas.height + 2;
-        this.size = 1 + Math.floor(Math.random() * 2);
-        this.vy = -(0.2 + Math.random() * 0.5);
-        this.life = init ? Math.random() : 1;
-        this.decay = 0.005 + Math.random() * 0.01;
-        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-      }
-      update() {
-        this.y += this.vy;
-        this.life -= this.decay;
-        if (this.life <= 0) this.reset();
-      }
-      draw() {
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = this.life;
-        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
-      }
-    }
+document.querySelector('a-scene').addEventListener('arError', (e) => {
+  log('❌ AR Error: ' + JSON.stringify(e.detail));
+});
 
-    const pixels = [];
-    for (let i = 0; i < 60; i++) pixels.push(new Pixel());
+// 3秒後強制檢查
+setTimeout(() => {
+  const videos = document.querySelectorAll('video');
+  log('--- 3秒檢查 ---');
+  log('video數量: ' + videos.length);
+  videos.forEach((v, i) => {
+    const cs = getComputedStyle(v);
+    log('v['+i+'] vis:'+cs.visibility+' op:'+cs.opacity+' z:'+cs.zIndex);
+  });
+  const aCanvas = document.querySelector('a-scene canvas');
+  if (aCanvas) {
+    const cs = getComputedStyle(aCanvas);
+    log('a-canvas z:'+cs.zIndex+' pos:'+cs.position);
+  }
+}, 3000);
 
-    function loop() {
-      // 重要：使用 clearRect 而不是 fillRect(黑色)，確保背景透明
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      pixels.forEach(p => {
-        p.update();
-        p.draw();
-      });
-      requestAnimationFrame(loop);
-    }
-    loop();
-  </script>
+// 像素粒子
+const canvas = document.getElementById('pixel-canvas');
+const ctx = canvas.getContext('2d');
+function resize() {
+  canvas.width  = Math.floor(window.innerWidth  / 3);
+  canvas.height = Math.floor(window.innerHeight / 3);
+  canvas.style.width  = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+const COLORS = ['#FFE066','#FF8C00','#FF00FF','#00FFFF','#00FF41','#FF2020','#FFFFFF','#BF00FF'];
+class Pixel {
+  constructor() { this.reset(true); }
+  reset(init=false) {
+    this.x=Math.random()*canvas.width;
+    this.y=init?Math.random()*canvas.height:canvas.height+2;
+    this.size=1+Math.floor(Math.random()*3);
+    this.vy=-(0.3+Math.random()*0.8);
+    this.vx=(Math.random()-0.5)*0.4;
+    this.life=init?Math.random():1;
+    this.decay=0.006+Math.random()*0.010;
+    this.color=COLORS[Math.floor(Math.random()*COLORS.length)];
+    this.blinkSpeed=3+Math.random()*6;
+    this.blinkT=Math.random()*Math.PI*2;
+    this.doBlink=Math.random()>0.4;
+  }
+  update(dt){this.x+=this.vx;this.y+=this.vy;this.life-=this.decay;this.blinkT+=this.blinkSpeed*dt;if(this.life<=0)this.reset();}
+  draw(){if(this.doBlink&&Math.sin(this.blinkT)<0)return;ctx.globalAlpha=Math.max(0,this.life)*0.85;ctx.fillStyle=this.color;ctx.fillRect(Math.floor(this.x),Math.floor(this.y),this.size,this.size);}
+}
+const pixels=[];
+for(let i=0;i<100;i++)pixels.push(new Pixel());
+let lastTime=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;
+  ctx.globalAlpha=0.2;ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+  pixels.forEach(p=>{p.update(dt);p.draw();});
+}
+requestAnimationFrame(loop);
+</script>
+
 </body>
 </html>
