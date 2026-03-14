@@ -12,12 +12,37 @@
 </head>
 <body>
 
+<script>
+// ═══════════════════════════
+//  ★ 設定區 ★
+// ═══════════════════════════
+var FPS      = 24;
+var S1_START = 0;    // model2 第一段開始格
+var S1_END   = 20;   // model2 第一段結束格（循環）
+var S2_START = 20;   // model2 第二段開始格
+var S2_END   = 60;   // model2 第二段結束格（播完進model3）
+// ═══════════════════════════
+
+var mixers = { m1: null, m2: null, m3: null };
+
+// A-Frame tick component（每幀更新所有 mixer）
+AFRAME.registerComponent('mixer-tick', {
+  tick: function(time, delta) {
+    var d = delta / 1000;
+    if (mixers.m1) mixers.m1.mixer.update(d);
+    if (mixers.m2) mixers.m2.mixer.update(d);
+    if (mixers.m3) mixers.m3.mixer.update(d);
+  }
+});
+</script>
+
 <a-scene
   mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
   color-space="sRGB"
   renderer="colorManagement: true;"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
+  mixer-tick
 >
   <a-assets>
     <a-asset-item id="m1" src="./model1.glb"></a-asset-item>
@@ -33,7 +58,6 @@
       src="#m1"
       position="0 0.05 0"
       scale="0.15 0.15 0.15"
-      animation-mixer="clip: *; loop: repeat; crossFadeDuration: 0"
       visible="true"
     ></a-gltf-model>
 
@@ -55,103 +79,73 @@
 </a-scene>
 
 <script>
-// ═══════════════════════════
-//  ★ 設定區 ★
-// ═══════════════════════════
-var FPS      = 24;
-var S1_START = 0;    // model2 第一段開始格
-var S1_END   = 20;   // model2 第一段結束格（循環）
-var S2_START = 20;   // model2 第二段開始格
-var S2_END   = 60;   // model2 第二段結束格（播完進model3）
-// ═══════════════════════════
-
 var state = 'model1';
 var scene = document.querySelector('a-scene');
+
+function buildMixer(el, key, onReady) {
+  var check = setInterval(function() {
+    var comp = el.components['gltf-model'];
+    if (comp && comp.model) {
+      clearInterval(check);
+      var root = comp.model.scene || comp.model;
+      var mixer = new THREE.AnimationMixer(root);
+      var clips = comp.model.animations || [];
+      mixers[key] = { mixer: mixer, clips: clips };
+      console.log(key + ' ready, clips: ' + clips.length);
+      if (onReady) onReady();
+    }
+  }, 100);
+}
+
+function playClips(key, startF, endF, loop, onEnd) {
+  var data = mixers[key];
+  if (!data || data.clips.length === 0) {
+    console.warn(key + ' no clips yet');
+    if (onEnd) setTimeout(onEnd, 500);
+    return;
+  }
+  var mixer = data.mixer;
+  var clips = data.clips;
+  mixer.stopAllAction();
+
+  var realEnd = (endF === 999)
+    ? Math.round(clips[0].duration * FPS)
+    : endF;
+
+  clips.forEach(function(clip) {
+    var sub = THREE.AnimationUtils.subclip(clip, clip.name, startF, realEnd, FPS);
+    var action = mixer.clipAction(sub);
+    action.reset();
+    action.time = 0;
+    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+    action.clampWhenFinished = !loop;
+    action.play();
+  });
+
+  if (!loop && onEnd) {
+    setTimeout(onEnd, ((realEnd - startF) / FPS) * 1000);
+  }
+}
 
 scene.addEventListener('loaded', function() {
   var gltf1 = document.getElementById('gltf1');
   var gltf2 = document.getElementById('gltf2');
   var gltf3 = document.getElementById('gltf3');
 
-  // ── 用 Three.js 直接操作動畫 ──
-  var clock = new THREE.Clock();
-
-  // 每個模型自己的 mixer
-  var mixers = { m1: null, m2: null, m3: null };
-
-  function buildMixer(el, key, onReady) {
-    var check = setInterval(function() {
-      var comp = el.components['gltf-model'];
-      if (comp && comp.model) {
-        clearInterval(check);
-        var mixer = new THREE.AnimationMixer(comp.model.scene || comp.model);
-        mixers[key] = { mixer: mixer, clips: comp.model.animations || [] };
-        console.log(key + ' mixer ready, clips:', mixers[key].clips.length);
-        if (onReady) onReady();
-      }
-    }, 100);
-  }
-
-  function playClips(key, startF, endF, loop, onEnd) {
-    var data = mixers[key];
-    if (!data || data.clips.length === 0) {
-      console.warn(key + ' no clips');
-      if (onEnd) setTimeout(onEnd, 500);
-      return;
-    }
-    var mixer = data.mixer;
-    var clips = data.clips;
-    mixer.stopAllAction();
-
-    var realEnd = (endF === 999)
-      ? Math.round(clips[0].duration * FPS)
-      : endF;
-
-    clips.forEach(function(clip) {
-      var sub = THREE.AnimationUtils.subclip(clip, clip.name, startF, realEnd, FPS);
-      var action = mixer.clipAction(sub);
-      action.reset();
-      action.time = 0;
-      action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
-      action.clampWhenFinished = !loop;
-      action.play();
-    });
-
-    if (!loop && onEnd) {
-      setTimeout(onEnd, ((realEnd - startF) / FPS) * 1000);
-    }
-  }
-
-  // render loop
-  scene.addEventListener('render', function() {
-    var d = clock.getDelta();
-    if (mixers.m1) mixers.m1.mixer.update(d);
-    if (mixers.m2) mixers.m2.mixer.update(d);
-    if (mixers.m3) mixers.m3.mixer.update(d);
-  });
-
-  // 建立 mixer 並自動播 model1
-  buildMixer(gltf1, 'm1', function() {
-    playClips('m1', 0, 999, true, null);
-  });
+  buildMixer(gltf1, 'm1', function() { playClips('m1', 0, 999, true, null); });
   buildMixer(gltf2, 'm2', null);
   buildMixer(gltf3, 'm3', null);
 
-  // 點擊事件
   document.body.addEventListener('click', function() {
     if (state === 'model1') {
       state = 'model2a';
       gltf1.setAttribute('visible', false);
       gltf2.setAttribute('visible', true);
-      // 確保 mixer 建好再播
-      var tryPlay = function() {
-        if (mixers.m2) {
-          playClips('m2', S1_START, S1_END, true, null);
-        } else {
-          setTimeout(tryPlay, 100);
-        }
+      var try2 = function() {
+        if (mixers.m2) playClips('m2', S1_START, S1_END, true, null);
+        else setTimeout(try2, 100);
       };
-      tryPlay();
+      try2();
 
     } else if (state === 'model2a') {
       state = 'model2b';
@@ -159,14 +153,11 @@ scene.addEventListener('loaded', function() {
         state = 'model3';
         gltf2.setAttribute('visible', false);
         gltf3.setAttribute('visible', true);
-        var tryPlay3 = function() {
-          if (mixers.m3) {
-            playClips('m3', 0, 999, true, null);
-          } else {
-            setTimeout(tryPlay3, 100);
-          }
+        var try3 = function() {
+          if (mixers.m3) playClips('m3', 0, 999, true, null);
+          else setTimeout(try3, 100);
         };
-        tryPlay3();
+        try3();
       });
     }
   });
