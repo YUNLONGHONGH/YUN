@@ -29,30 +29,27 @@
 
   <a-entity mindar-image-target="targetIndex: 0">
 
-    <!-- model1：預設顯示，循環 -->
+    <!-- model1：預設顯示，循環播全部動畫 -->
     <a-gltf-model id="gltf1"
       src="#m1"
       position="0 0.05 0"
       scale="0.15 0.15 0.15"
-      animation-mixer="clip: *; loop: repeat"
       visible="true"
     ></a-gltf-model>
 
-    <!-- model2：隱藏，點擊後出現 -->
+    <!-- model2：點擊後出現 -->
     <a-gltf-model id="gltf2"
       src="#m2"
       position="0 0.05 0"
       scale="0.15 0.15 0.15"
-      animation-mixer="clip: *; loop: once; clampWhenFinished: true"
       visible="false"
     ></a-gltf-model>
 
-    <!-- model3：隱藏，model2 播完後出現循環 -->
+    <!-- model3：model2 播完後出現 -->
     <a-gltf-model id="gltf3"
       src="#m3"
       position="0 0.05 0"
       scale="0.15 0.15 0.15"
-      animation-mixer="clip: *; loop: repeat"
       visible="false"
     ></a-gltf-model>
 
@@ -61,85 +58,63 @@
 
 <script>
 // ═══════════════════════════════
-//  ★ 設定 ★
+//  ★ 設定區 ★
 // ═══════════════════════════════
 var FPS      = 24;
-var S1_START = 0;    // model2 第一段 開始格
-var S1_END   = 20;   // model2 第一段 結束格（循環）
+var S1_START = 0;    // model2 第一段 開始格（循環）
+var S1_END   = 20;   // model2 第一段 結束格
 var S2_START = 20;   // model2 第二段 開始格
-var S2_END   = 60;   // model2 第二段 結束格
+var S2_END   = 60;   // model2 第二段 結束格（播完進 model3）
 // ═══════════════════════════════
 
 var state = 'model1';
 
-// A-Frame 載入完後設定事件
-document.querySelector('a-scene').addEventListener('loaded', function() {
-  var gltf1 = document.getElementById('gltf1');
-  var gltf2 = document.getElementById('gltf2');
-  var gltf3 = document.getElementById('gltf3');
-
-  // 點擊整個畫面
-  document.body.addEventListener('click', function() {
-
-    if (state === 'model1') {
-      // 第一次點擊：切到 model2 第一段（循環）
-      state = 'model2a';
-      gltf1.setAttribute('visible', false);
-      gltf2.setAttribute('visible', true);
-      gltf2.setAttribute('animation-mixer', {
-        clip: '*',
-        loop: 'repeat',
-        startAt: S1_START / FPS,
-        // A-Frame animation-mixer 用 timeScale 控制
-      });
-      // 用原生 Three.js mixer 控制播放區段
-      gltf2.addEventListener('model-loaded', function() {
-        playSegment(gltf2, S1_START, S1_END, true, null);
-      });
-      // 如果已經載入過，直接播
-      if (gltf2.components['gltf-model'] && gltf2.components['gltf-model'].model) {
-        playSegment(gltf2, S1_START, S1_END, true, null);
-      }
-
-    } else if (state === 'model2a') {
-      // 第二次點擊：model2 第二段（播完進 model3）
-      state = 'model2b';
-      playSegment(gltf2, S2_START, S2_END, false, function() {
-        // 播完自動切 model3
-        state = 'model3';
-        gltf2.setAttribute('visible', false);
-        gltf3.setAttribute('visible', true);
-        playSegment(gltf3, 0, 999, true, null);
-      });
+// 取得模型的 Three.js mixer 和 clips
+function getMixerAndClips(el) {
+  var obj = el.getObject3D('mesh');
+  if (!obj) return null;
+  var clips = [];
+  obj.traverse(function(child) {
+    if (child.animations && child.animations.length > 0) {
+      clips = clips.concat(child.animations);
     }
   });
-});
+  // 從 el 身上找 mixer（A-Frame animation-mixer component 會建立）
+  var comp = el.components['animation-mixer'];
+  var mixer = comp ? comp.mixer : null;
+  // 如果 component 沒有，自己建一個
+  if (!mixer) {
+    mixer = new THREE.AnimationMixer(obj);
+    el._customMixer = mixer;
+    // 加入 render loop
+    el.sceneEl.object3D.userData._mixers = el.sceneEl.object3D.userData._mixers || [];
+    el.sceneEl.object3D.userData._mixers.push(mixer);
+  }
+  // 取得 gltf 的 animations
+  var gltfComp = el.components['gltf-model'];
+  if (gltfComp && gltfComp.model && gltfComp.model.animations) {
+    clips = gltfComp.model.animations;
+  }
+  return { mixer: mixer, clips: clips };
+}
 
-// 用 Three.js mixer 控制 A-Frame gltf 的播放區段
+// 播放指定格數區段
 function playSegment(el, startFrame, endFrame, loop, onEnd) {
-  var mesh = el.getObject3D('mesh');
-  if (!mesh) return;
+  var mc = getMixerAndClips(el);
+  if (!mc || mc.clips.length === 0) {
+    console.warn('找不到 mixer 或 clips', el.id);
+    if (onEnd) setTimeout(onEnd, 500);
+    return;
+  }
 
-  // 找 AnimationMixer
-  var mixer = el.components['animation-mixer'] &&
-              el.components['animation-mixer'].mixer;
-  if (!mixer) return;
-
-  var clips = mesh.animations || (el.components['gltf-model'].model && el.components['gltf-model'].model.animations) || [];
-  if (!clips || clips.length === 0) return;
+  var mixer  = mc.mixer;
+  var clips  = mc.clips;
+  var endF   = (endFrame === 999) ? Math.round(clips[0].duration * FPS) : endFrame;
 
   mixer.stopAllAction();
 
-  var startSec = startFrame / FPS;
-  var endSec   = endFrame   / FPS;
-
   clips.forEach(function(clip) {
-    var sub = THREE.AnimationUtils.subclip(
-      clip, clip.name,
-      startFrame,
-      endFrame === 999 ? Math.round(clip.duration * FPS) : endFrame,
-      FPS
-    );
+    var sub = THREE.AnimationUtils.subclip(clip, clip.name, startFrame, endF, FPS);
     var action = mixer.clipAction(sub);
     action.reset();
     action.time = 0;
@@ -153,10 +128,79 @@ function playSegment(el, startFrame, endFrame, loop, onEnd) {
   });
 
   if (!loop && onEnd) {
-    var ms = (endSec - startSec) * 1000;
+    var ms = ((endF - startFrame) / FPS) * 1000;
     setTimeout(onEnd, ms);
   }
 }
+
+// Render loop：更新所有自訂 mixer
+document.querySelector('a-scene').addEventListener('renderstart', function() {
+  var clock = new THREE.Clock();
+  document.querySelector('a-scene').addEventListener('render', function() {
+    var delta = clock.getDelta();
+    var mixers = document.querySelector('a-scene').object3D.userData._mixers || [];
+    mixers.forEach(function(m) { m.update(delta); });
+  });
+});
+
+document.querySelector('a-scene').addEventListener('loaded', function() {
+  var gltf1 = document.getElementById('gltf1');
+  var gltf2 = document.getElementById('gltf2');
+  var gltf3 = document.getElementById('gltf3');
+
+  // model1 載入後開始循環播放
+  gltf1.addEventListener('model-loaded', function() {
+    playSegment(gltf1, 0, 999, true, null);
+  });
+
+  // model2 載入後待命（不播）
+  // model3 載入後待命（不播）
+
+  // 點擊事件
+  document.body.addEventListener('click', function() {
+
+    if (state === 'model1') {
+      // 第一次點擊 → model2 第一段循環
+      state = 'model2a';
+      gltf1.setAttribute('visible', false);
+      gltf2.setAttribute('visible', true);
+
+      var tryPlay = function() {
+        var mc = getMixerAndClips(gltf2);
+        if (mc && mc.clips.length > 0) {
+          playSegment(gltf2, S1_START, S1_END, true, null);
+        } else {
+          // 還沒載入好，等一下再試
+          gltf2.addEventListener('model-loaded', function() {
+            playSegment(gltf2, S1_START, S1_END, true, null);
+          });
+        }
+      };
+      tryPlay();
+
+    } else if (state === 'model2a') {
+      // 第二次點擊 → model2 第二段，播完進 model3
+      state = 'model2b';
+      playSegment(gltf2, S2_START, S2_END, false, function() {
+        state = 'model3';
+        gltf2.setAttribute('visible', false);
+        gltf3.setAttribute('visible', true);
+
+        var tryPlay3 = function() {
+          var mc = getMixerAndClips(gltf3);
+          if (mc && mc.clips.length > 0) {
+            playSegment(gltf3, 0, 999, true, null);
+          } else {
+            gltf3.addEventListener('model-loaded', function() {
+              playSegment(gltf3, 0, 999, true, null);
+            });
+          }
+        };
+        tryPlay3();
+      });
+    }
+  });
+});
 </script>
 
 </body>
