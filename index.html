@@ -8,24 +8,75 @@
   <style>
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
+
+    #ui {
+      position: fixed;
+      bottom: 80px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .btn {
+      pointer-events: auto;
+      border: none;
+      border-radius: 16px;
+      padding: 18px 36px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+      display: none;
+    }
+
+    #btn-next {
+      background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      border-bottom: 4px solid #3a7a1e;
+    }
+
+    #btn-accept {
+      background: linear-gradient(180deg, #ffd96a 0%, #f5a623 100%);
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      border-bottom: 4px solid #b87318;
+    }
+
+    #btn-confirm {
+      background: linear-gradient(180deg, #f78fa7 0%, #e0195a 100%);
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      border-bottom: 4px solid #9e1140;
+    }
+
+    .btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+      border-bottom-width: 1px;
+    }
   </style>
 </head>
 <body>
 
+<div id="ui">
+  <button class="btn" id="btn-next">下個 ▶</button>
+  <button class="btn" id="btn-accept">接受</button>
+  <button class="btn" id="btn-confirm">確認</button>
+</div>
+
 <script>
-// ═══════════════════════════
-//  ★ 設定區 ★
-// ═══════════════════════════
 var FPS      = 24;
-var S1_START = 0;    // model2 第一段開始格
-var S1_END   = 20;   // model2 第一段結束格（循環）
-var S2_START = 20;   // model2 第二段開始格
-var S2_END   = 60;   // model2 第二段結束格（播完進model3）
-// ═══════════════════════════
+var S1_START = 0;
+var S1_END   = 20;
+var S2_START = 20;
+var S2_END   = 60;
 
 var mixers = { m1: null, m2: null, m3: null };
 
-// A-Frame tick component（每幀更新所有 mixer）
 AFRAME.registerComponent('mixer-tick', {
   tick: function(time, delta) {
     var d = delta / 1000;
@@ -82,6 +133,18 @@ AFRAME.registerComponent('mixer-tick', {
 var state = 'model1';
 var scene = document.querySelector('a-scene');
 
+var btnNext    = document.getElementById('btn-next');
+var btnAccept  = document.getElementById('btn-accept');
+var btnConfirm = document.getElementById('btn-confirm');
+
+function showBtns() {
+  var ids = Array.from(arguments);
+  ['btn-next','btn-accept','btn-confirm'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.style.display = ids.indexOf(id) !== -1 ? 'block' : 'none';
+  });
+}
+
 function buildMixer(el, key, onReady) {
   var check = setInterval(function() {
     var comp = el.components['gltf-model'];
@@ -132,35 +195,58 @@ scene.addEventListener('loaded', function() {
   var gltf2 = document.getElementById('gltf2');
   var gltf3 = document.getElementById('gltf3');
 
-  buildMixer(gltf1, 'm1', function() { playClips('m1', 0, 999, true, null); });
+  // Model1 載入後循環播放，顯示「下個」按鈕
+  buildMixer(gltf1, 'm1', function() {
+    playClips('m1', 0, 999, true, null);
+    showBtns('btn-next');
+  });
+
   buildMixer(gltf2, 'm2', null);
   buildMixer(gltf3, 'm3', null);
 
-  document.body.addEventListener('click', function() {
-    if (state === 'model1') {
-      state = 'model2a';
-      gltf1.setAttribute('visible', false);
-      gltf2.setAttribute('visible', true);
-      var try2 = function() {
-        if (mixers.m2) playClips('m2', S1_START, S1_END, true, null);
-        else setTimeout(try2, 100);
-      };
-      try2();
+  // 下個 ▶
+  btnNext.addEventListener('click', function() {
+    if (state !== 'model1') return;
+    state = 'model2a';
+    showBtns(); // 隱藏所有按鈕
 
-    } else if (state === 'model2a') {
-      state = 'model2b';
-      playClips('m2', S2_START, S2_END, false, function() {
-        state = 'model3';
-        gltf2.setAttribute('visible', false);
-        gltf3.setAttribute('visible', true);
-        var try3 = function() {
-          if (mixers.m3) playClips('m3', 0, 999, true, null);
-          else setTimeout(try3, 100);
-        };
-        try3();
-      });
-    }
+    gltf1.setAttribute('visible', false);
+    gltf2.setAttribute('visible', true);
+
+    var try2 = function() {
+      if (mixers.m2) {
+        // 播 0~20 一次（loop=false），播完顯示接受/確認按鈕
+        playClips('m2', S1_START, S1_END, false, function() {
+          state = 'model2b_ready';
+          showBtns('btn-accept', 'btn-confirm');
+        });
+      } else {
+        setTimeout(try2, 100);
+      }
+    };
+    try2();
   });
+
+  // 接受 or 確認 → 播 model2 20~60 → 切 model3
+  function goModel2b() {
+    if (state !== 'model2b_ready') return;
+    state = 'model2b';
+    showBtns(); // 隱藏按鈕
+
+    playClips('m2', S2_START, S2_END, false, function() {
+      state = 'model3';
+      gltf2.setAttribute('visible', false);
+      gltf3.setAttribute('visible', true);
+      var try3 = function() {
+        if (mixers.m3) playClips('m3', 0, 999, true, null);
+        else setTimeout(try3, 100);
+      };
+      try3();
+    });
+  }
+
+  btnAccept.addEventListener('click', goModel2b);
+  btnConfirm.addEventListener('click', goModel2b);
 });
 </script>
 
