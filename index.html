@@ -19,7 +19,6 @@
       z-index: 999;
       pointer-events: none;
     }
-
     .btn {
       pointer-events: auto;
       border: none;
@@ -31,53 +30,32 @@
       box-shadow: 0 4px 0 rgba(0,0,0,0.3);
       display: none;
     }
-
     #btn-next {
       background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #3a7a1e;
     }
-
     #btn-accept {
       background: linear-gradient(180deg, #ffd96a 0%, #f5a623 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #b87318;
     }
-
     #btn-confirm {
       background: linear-gradient(180deg, #f78fa7 0%, #e0195a 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #9e1140;
     }
-
     .btn:active {
       transform: translateY(3px);
       box-shadow: 0 1px 0 rgba(0,0,0,0.3);
       border-bottom-width: 1px;
     }
-
-    /* debug */
-    #debug {
-      position: fixed;
-      top: 0; left: 0;
-      background: rgba(0,0,0,0.75);
-      color: #0f0;
-      font-size: 13px;
-      padding: 6px 10px;
-      z-index: 9999;
-      max-height: 40vh;
-      overflow-y: auto;
-      width: 100%;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
-
-<div id="debug">啟動中...<br></div>
 
 <div id="ui">
   <button class="btn" id="btn-next">下個 ▶</button>
@@ -86,17 +64,15 @@
 </div>
 
 <script>
-function log(msg) {
-  var d = document.getElementById('debug');
-  d.innerHTML += msg + '<br>';
-  console.log(msg);
-}
-
+// ═══════════════════════════
+//  ★ 設定區 ★
+// ═══════════════════════════
 var FPS      = 24;
 var S1_START = 0;
 var S1_END   = 20;
 var S2_START = 20;
 var S2_END   = 60;
+// ═══════════════════════════
 
 var mixers = { m1: null, m2: null, m3: null };
 
@@ -118,7 +94,7 @@ AFRAME.registerComponent('mixer-tick', {
   device-orientation-permission-ui="enabled: false"
   mixer-tick
 >
-  <a-assets timeout="30000">
+  <a-assets>
     <a-asset-item id="m1" src="./model1.glb"></a-asset-item>
     <a-asset-item id="m2" src="./model2.glb"></a-asset-item>
     <a-asset-item id="m3" src="./model3.glb"></a-asset-item>
@@ -156,13 +132,13 @@ AFRAME.registerComponent('mixer-tick', {
 var state = 'model1';
 var scene = document.querySelector('a-scene');
 
-var btnNext    = document.getElementById('btn-next');
-var btnAccept  = document.getElementById('btn-accept');
-var btnConfirm = document.getElementById('btn-confirm');
+var btnNext   = document.getElementById('btn-next');
+var btnAccept = document.getElementById('btn-accept');
+var btnConfirm= document.getElementById('btn-confirm');
 
 function showBtns() {
   var ids = Array.from(arguments);
-  ['btn-next', 'btn-accept', 'btn-confirm'].forEach(function(id) {
+  ['btn-next','btn-accept','btn-confirm'].forEach(function(id) {
     document.getElementById(id).style.display =
       ids.indexOf(id) !== -1 ? 'block' : 'none';
   });
@@ -177,7 +153,6 @@ function buildMixer(el, key, onReady) {
       var mixer = new THREE.AnimationMixer(root);
       var clips = comp.model.animations || [];
       mixers[key] = { mixer: mixer, clips: clips };
-      log('✅ ' + key + ' ready, clips: ' + clips.length);
       if (onReady) onReady();
     }
   }, 100);
@@ -186,12 +161,11 @@ function buildMixer(el, key, onReady) {
 function playClips(key, startF, endF, loop, onEnd) {
   var data = mixers[key];
   if (!data || data.clips.length === 0) {
-    log('⚠️ ' + key + ' no clips');
     if (onEnd) setTimeout(onEnd, 500);
     return;
   }
   var mixer = data.mixer;
-  var clips = data.clips;
+  var clips  = data.clips;
   mixer.stopAllAction();
 
   var realEnd = (endF === 999)
@@ -213,28 +187,12 @@ function playClips(key, startF, endF, loop, onEnd) {
   }
 }
 
-// debug：監聽載入事件
-document.querySelector('a-assets').addEventListener('loaded', function() {
-  log('✅ a-assets 全部載入');
-});
-['gltf1','gltf2','gltf3'].forEach(function(id) {
-  var el = document.getElementById(id);
-  el.addEventListener('model-loaded', function() { log('✅ ' + id + ' 模型載入'); });
-  el.addEventListener('model-error',  function() { log('❌ ' + id + ' 模型錯誤'); });
-});
-scene.addEventListener('arReady', function() { log('✅ MindAR arReady — 相機啟動'); });
-scene.addEventListener('arError', function(e) { log('❌ MindAR arError: ' + JSON.stringify(e.detail)); });
-
-log('📄 頁面載入，等待 AR...');
-
 scene.addEventListener('loaded', function() {
-  log('✅ a-scene loaded');
-
   var gltf1 = document.getElementById('gltf1');
   var gltf2 = document.getElementById('gltf2');
   var gltf3 = document.getElementById('gltf3');
 
-  // Model1 載入後循環播放，顯示「下個」按鈕
+  // model1 循環，顯示「下個」按鈕
   buildMixer(gltf1, 'm1', function() {
     playClips('m1', 0, 999, true, null);
     showBtns('btn-next');
@@ -243,7 +201,7 @@ scene.addEventListener('loaded', function() {
   buildMixer(gltf2, 'm2', null);
   buildMixer(gltf3, 'm3', null);
 
-  // ── 下個 ▶ ──
+  // 下個 ▶
   btnNext.addEventListener('click', function() {
     if (state !== 'model1') return;
     state = 'model2a';
@@ -251,14 +209,12 @@ scene.addEventListener('loaded', function() {
 
     gltf1.setAttribute('visible', false);
     gltf2.setAttribute('visible', true);
-    log('▶ 切換 model2，播 0~20');
 
     var try2 = function() {
       if (mixers.m2) {
         playClips('m2', S1_START, S1_END, false, function() {
           state = 'model2b_ready';
           showBtns('btn-accept', 'btn-confirm');
-          log('⏸ model2 0~20 播完，顯示接受/確認');
         });
       } else {
         setTimeout(try2, 100);
@@ -267,18 +223,16 @@ scene.addEventListener('loaded', function() {
     try2();
   });
 
-  // ── 接受 / 確認 ──
+  // 接受 / 確認
   function goModel2b() {
     if (state !== 'model2b_ready') return;
     state = 'model2b';
     showBtns();
-    log('▶ 播 model2 20~60');
 
     playClips('m2', S2_START, S2_END, false, function() {
       state = 'model3';
       gltf2.setAttribute('visible', false);
       gltf3.setAttribute('visible', true);
-      log('▶ 切換 model3');
       var try3 = function() {
         if (mixers.m3) playClips('m3', 0, 999, true, null);
         else setTimeout(try3, 100);
