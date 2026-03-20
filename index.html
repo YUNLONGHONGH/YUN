@@ -14,6 +14,25 @@
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
 
+    /* 教學文字 */
+    #hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.55);
+      color: white;
+      font-family: 'Cubic11', sans-serif;
+      font-size: 22px;
+      padding: 16px 28px;
+      border-radius: 14px;
+      z-index: 999;
+      pointer-events: none;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* 按鈕區 */
     #ui {
       position: fixed;
       bottom: 80px;
@@ -70,6 +89,10 @@
 </head>
 <body>
 
+<!-- 教學提示文字 -->
+<div id="hint">請把相機對準任務卡片</div>
+
+<!-- 按鈕 -->
 <div id="ui">
   <button class="btn" id="btn-next"></button>
   <button class="btn" id="btn-accept"></button>
@@ -82,9 +105,9 @@
 // ═══════════════════════════
 var FPS      = 24;
 var S1_START = 0;
-var S1_END   = 20;
-var S2_START = 20;
-var S2_END   = 60;
+var S1_END   = 40;
+var S2_START = 40;
+var S2_END   = 80;
 // ═══════════════════════════
 
 var mixers = { m1: null, m2: null, m3: null };
@@ -121,167 +144,7 @@ AFRAME.registerComponent('mixer-tick', {
       src="#m1"
       position="0 0.05 0"
       scale="0.30 0.30 0.30"
-      visible="true"
-    ></a-gltf-model>
-
-    <a-gltf-model id="gltf2"
-      src="#m2"
-      position="0 0.05 0"
-      scale="0.30 0.30 0.30"
       visible="false"
     ></a-gltf-model>
 
-    <a-gltf-model id="gltf3"
-      src="#m3"
-      position="0 0.05 0"
-      scale="0.30 0.30 0.30"
-      visible="false"
-    ></a-gltf-model>
-
-  </a-entity>
-</a-scene>
-
-<script>
-var state = 'model1';
-var scene = document.querySelector('a-scene');
-
-var btnNext    = document.getElementById('btn-next');
-var btnAccept  = document.getElementById('btn-accept');
-var btnConfirm = document.getElementById('btn-confirm');
-
-// 按鈕文字對照表
-var btnLabels = {
-  'btn-next':    '下個 ▶',
-  'btn-accept':  '接受',
-  'btn-confirm': '確認'
-};
-
-// 打字機效果
-function typeWriter(el, text, speed) {
-  el.textContent = '';
-  var i = 0;
-  var timer = setInterval(function() {
-    el.textContent += text[i];
-    i++;
-    if (i >= text.length) clearInterval(timer);
-  }, speed || 80);
-}
-
-// 顯示指定按鈕（其餘隱藏），並觸發打字機
-function showBtns() {
-  var ids = Array.from(arguments);
-  ['btn-next', 'btn-accept', 'btn-confirm'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (ids.indexOf(id) !== -1) {
-      el.style.display = 'block';
-      typeWriter(el, btnLabels[id], 80);
-    } else {
-      el.style.display = 'none';
-    }
-  });
-}
-
-function buildMixer(el, key, onReady) {
-  var check = setInterval(function() {
-    var comp = el.components['gltf-model'];
-    if (comp && comp.model) {
-      clearInterval(check);
-      var root = comp.model.scene || comp.model;
-      var mixer = new THREE.AnimationMixer(root);
-      var clips = comp.model.animations || [];
-      mixers[key] = { mixer: mixer, clips: clips };
-      if (onReady) onReady();
-    }
-  }, 100);
-}
-
-function playClips(key, startF, endF, loop, onEnd) {
-  var data = mixers[key];
-  if (!data || data.clips.length === 0) {
-    if (onEnd) setTimeout(onEnd, 500);
-    return;
-  }
-  var mixer = data.mixer;
-  var clips  = data.clips;
-  mixer.stopAllAction();
-
-  var realEnd = (endF === 999)
-    ? Math.round(clips[0].duration * FPS)
-    : endF;
-
-  clips.forEach(function(clip) {
-    var sub = THREE.AnimationUtils.subclip(clip, clip.name, startF, realEnd, FPS);
-    var action = mixer.clipAction(sub);
-    action.reset();
-    action.time = 0;
-    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
-    action.clampWhenFinished = !loop;
-    action.play();
-  });
-
-  if (!loop && onEnd) {
-    setTimeout(onEnd, ((realEnd - startF) / FPS) * 1000);
-  }
-}
-
-scene.addEventListener('loaded', function() {
-  var gltf1 = document.getElementById('gltf1');
-  var gltf2 = document.getElementById('gltf2');
-  var gltf3 = document.getElementById('gltf3');
-
-  // model1 循環，顯示「下個」按鈕
-  buildMixer(gltf1, 'm1', function() {
-    playClips('m1', 0, 999, true, null);
-    showBtns('btn-next');
-  });
-
-  buildMixer(gltf2, 'm2', null);
-  buildMixer(gltf3, 'm3', null);
-
-  // 下個 ▶
-  btnNext.addEventListener('click', function() {
-    if (state !== 'model1') return;
-    state = 'model2a';
-    showBtns();
-
-    gltf1.setAttribute('visible', false);
-    gltf2.setAttribute('visible', true);
-
-    var try2 = function() {
-      if (mixers.m2) {
-        playClips('m2', S1_START, S1_END, false, function() {
-          state = 'model2b_ready';
-          showBtns('btn-accept', 'btn-confirm');
-        });
-      } else {
-        setTimeout(try2, 100);
-      }
-    };
-    try2();
-  });
-
-  // 接受 / 確認
-  function goModel2b() {
-    if (state !== 'model2b_ready') return;
-    state = 'model2b';
-    showBtns();
-
-    playClips('m2', S2_START, S2_END, false, function() {
-      state = 'model3';
-      gltf2.setAttribute('visible', false);
-      gltf3.setAttribute('visible', true);
-      var try3 = function() {
-        if (mixers.m3) playClips('m3', 0, 999, true, null);
-        else setTimeout(try3, 100);
-      };
-      try3();
-    });
-  }
-
-  btnAccept.addEventListener('click', goModel2b);
-  btnConfirm.addEventListener('click', goModel2b);
-});
-</script>
-
-</body>
-</html>
+    <a-gltf-m
