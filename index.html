@@ -6,6 +6,11 @@
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <style>
+    @font-face {
+      font-family: 'Cubic11';
+      src: url('./Cubic_11.ttf') format('truetype');
+    }
+
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
 
@@ -19,6 +24,7 @@
       z-index: 999;
       pointer-events: none;
     }
+
     .btn {
       pointer-events: auto;
       border: none;
@@ -26,28 +32,35 @@
       padding: 18px 36px;
       font-size: 22px;
       font-weight: bold;
+      font-family: 'Cubic11', sans-serif;
       cursor: pointer;
       box-shadow: 0 4px 0 rgba(0,0,0,0.3);
       display: none;
+      overflow: hidden;
+      white-space: nowrap;
     }
+
     #btn-next {
       background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #3a7a1e;
     }
+
     #btn-accept {
       background: linear-gradient(180deg, #ffd96a 0%, #f5a623 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #b87318;
     }
+
     #btn-confirm {
       background: linear-gradient(180deg, #f78fa7 0%, #e0195a 100%);
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
       border-bottom: 4px solid #9e1140;
     }
+
     .btn:active {
       transform: translateY(3px);
       box-shadow: 0 1px 0 rgba(0,0,0,0.3);
@@ -58,9 +71,9 @@
 <body>
 
 <div id="ui">
-  <button class="btn" id="btn-next">下個 ▶</button>
-  <button class="btn" id="btn-accept">接受</button>
-  <button class="btn" id="btn-confirm">確認</button>
+  <button class="btn" id="btn-next"></button>
+  <button class="btn" id="btn-accept"></button>
+  <button class="btn" id="btn-confirm"></button>
 </div>
 
 <script>
@@ -132,15 +145,39 @@ AFRAME.registerComponent('mixer-tick', {
 var state = 'model1';
 var scene = document.querySelector('a-scene');
 
-var btnNext   = document.getElementById('btn-next');
-var btnAccept = document.getElementById('btn-accept');
-var btnConfirm= document.getElementById('btn-confirm');
+var btnNext    = document.getElementById('btn-next');
+var btnAccept  = document.getElementById('btn-accept');
+var btnConfirm = document.getElementById('btn-confirm');
 
+// 按鈕文字對照表
+var btnLabels = {
+  'btn-next':    '下個 ▶',
+  'btn-accept':  '接受',
+  'btn-confirm': '確認'
+};
+
+// 打字機效果
+function typeWriter(el, text, speed) {
+  el.textContent = '';
+  var i = 0;
+  var timer = setInterval(function() {
+    el.textContent += text[i];
+    i++;
+    if (i >= text.length) clearInterval(timer);
+  }, speed || 80);
+}
+
+// 顯示指定按鈕（其餘隱藏），並觸發打字機
 function showBtns() {
   var ids = Array.from(arguments);
-  ['btn-next','btn-accept','btn-confirm'].forEach(function(id) {
-    document.getElementById(id).style.display =
-      ids.indexOf(id) !== -1 ? 'block' : 'none';
+  ['btn-next', 'btn-accept', 'btn-confirm'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (ids.indexOf(id) !== -1) {
+      el.style.display = 'block';
+      typeWriter(el, btnLabels[id], 80);
+    } else {
+      el.style.display = 'none';
+    }
   });
 }
 
