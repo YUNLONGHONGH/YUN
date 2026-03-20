@@ -105,6 +105,8 @@ var S1_START = 0;
 var S1_END   = 40;
 var S2_START = 40;
 var S2_END   = 80;
+var S3_START = 0;
+var S3_END   = 200;
 // ═══════════════════════════
 
 var mixers = { m1: null, m2: null, m3: null };
@@ -147,7 +149,7 @@ AFRAME.registerComponent('mixer-tick', {
     <a-gltf-model id="gltf2"
       src="#m2"
       position="0 0.05 0"
-      scale="0.30 0.30 0.30"
+      scale="0.15 0.15 0.15"
       visible="false"
     ></a-gltf-model>
 
@@ -162,13 +164,13 @@ AFRAME.registerComponent('mixer-tick', {
 </a-scene>
 
 <script>
-var state          = 'scanning';
+var state           = 'scanning';
 var targetFoundFlag = false;
-var scene          = document.querySelector('a-scene');
-var hint           = document.getElementById('hint');
-var btnNext        = document.getElementById('btn-next');
-var btnAccept      = document.getElementById('btn-accept');
-var btnConfirm     = document.getElementById('btn-confirm');
+var scene           = document.querySelector('a-scene');
+var hint            = document.getElementById('hint');
+var btnNext         = document.getElementById('btn-next');
+var btnAccept       = document.getElementById('btn-accept');
+var btnConfirm      = document.getElementById('btn-confirm');
 
 var btnLabels = {
   'btn-next':    '下個 ▶',
@@ -223,9 +225,7 @@ function playClips(key, startF, endF, loop, onEnd) {
   var clips  = data.clips;
   mixer.stopAllAction();
 
-  var realEnd = (endF === 999)
-    ? Math.round(clips[0].duration * FPS)
-    : endF;
+  var realEnd = endF;
 
   clips.forEach(function(clip) {
     var sub = THREE.AnimationUtils.subclip(clip, clip.name, startF, realEnd, FPS);
@@ -247,7 +247,6 @@ scene.addEventListener('loaded', function() {
   var gltf2 = document.getElementById('gltf2');
   var gltf3 = document.getElementById('gltf3');
 
-  // targetFound 只記旗標
   var target = document.querySelector('[mindar-image-target]');
   target.addEventListener('targetFound', function() {
     if (state !== 'scanning') return;
@@ -257,7 +256,6 @@ scene.addEventListener('loaded', function() {
     targetFoundFlag = true;
   });
 
-  // m1 mixer ready 後，等 targetFound 再播
   buildMixer(gltf1, 'm1', function() {
     if (targetFoundFlag) {
       playClips('m1', 0, 999, true, null);
@@ -306,7 +304,7 @@ scene.addEventListener('loaded', function() {
       gltf2.setAttribute('visible', false);
       gltf3.setAttribute('visible', true);
       var try3 = function() {
-        if (mixers.m3) playClips('m3', 0, 999, true, null);
+        if (mixers.m3) playClips('m3', S3_START, S3_END, true, null);
         else setTimeout(try3, 100);
       };
       try3();
