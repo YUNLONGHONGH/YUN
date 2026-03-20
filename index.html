@@ -14,7 +14,6 @@
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
 
-    /* 教學文字 */
     #hint {
       position: fixed;
       top: 50%;
@@ -33,7 +32,6 @@
       white-space: nowrap;
     }
 
-    /* 按鈕區 */
     #ui {
       position: fixed;
       bottom: 80px;
@@ -164,13 +162,13 @@ AFRAME.registerComponent('mixer-tick', {
 </a-scene>
 
 <script>
-var state = 'scanning';
-var scene = document.querySelector('a-scene');
-var hint  = document.getElementById('hint');
-
-var btnNext    = document.getElementById('btn-next');
-var btnAccept  = document.getElementById('btn-accept');
-var btnConfirm = document.getElementById('btn-confirm');
+var state          = 'scanning';
+var targetFoundFlag = false;
+var scene          = document.querySelector('a-scene');
+var hint           = document.getElementById('hint');
+var btnNext        = document.getElementById('btn-next');
+var btnAccept      = document.getElementById('btn-accept');
+var btnConfirm     = document.getElementById('btn-confirm');
 
 var btnLabels = {
   'btn-next':    '下個 ▶',
@@ -249,28 +247,34 @@ scene.addEventListener('loaded', function() {
   var gltf2 = document.getElementById('gltf2');
   var gltf3 = document.getElementById('gltf3');
 
-  buildMixer(gltf1, 'm1', null);
-  buildMixer(gltf2, 'm2', null);
-  buildMixer(gltf3, 'm3', null);
-
-  // 掃描到目標 → 隱藏教學文字，顯示 model1 + 下個按鈕
+  // targetFound 只記旗標
   var target = document.querySelector('[mindar-image-target]');
   target.addEventListener('targetFound', function() {
     if (state !== 'scanning') return;
     state = 'model1';
     hint.style.display = 'none';
     gltf1.setAttribute('visible', true);
-
-    var try1 = function() {
-      if (mixers.m1) {
-        playClips('m1', 0, 999, true, null);
-        showBtns('btn-next');
-      } else {
-        setTimeout(try1, 100);
-      }
-    };
-    try1();
+    targetFoundFlag = true;
   });
+
+  // m1 mixer ready 後，等 targetFound 再播
+  buildMixer(gltf1, 'm1', function() {
+    if (targetFoundFlag) {
+      playClips('m1', 0, 999, true, null);
+      showBtns('btn-next');
+    } else {
+      var wait = setInterval(function() {
+        if (targetFoundFlag) {
+          clearInterval(wait);
+          playClips('m1', 0, 999, true, null);
+          showBtns('btn-next');
+        }
+      }, 100);
+    }
+  });
+
+  buildMixer(gltf2, 'm2', null);
+  buildMixer(gltf3, 'm3', null);
 
   // 下個 ▶
   btnNext.addEventListener('click', function() {
