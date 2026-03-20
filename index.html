@@ -14,6 +14,7 @@
     * { margin: 0; padding: 0; }
     body { overflow: hidden; }
 
+    /* 教學文字 — 直式長方形 */
     #hint {
       position: fixed;
       top: 50%;
@@ -23,13 +24,20 @@
       color: white;
       font-family: 'Cubic11', sans-serif;
       font-size: 22px;
-      padding: 20px 32px;
-      border-radius: 14px;
+      padding: 60px 36px;
+      border-radius: 20px;
       border: 2px dashed white;
       z-index: 999;
       pointer-events: none;
       text-align: center;
-      white-space: nowrap;
+      /* 直式：寬窄高長 */
+      width: 180px;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      line-height: 1.6;
     }
 
     #ui {
@@ -141,21 +149,21 @@ AFRAME.registerComponent('mixer-tick', {
 
     <a-gltf-model id="gltf1"
       src="#m1"
-      position="0 0.05 0"
+      position="0 -0.2 0"
       scale="0.30 0.30 0.30"
       visible="false"
     ></a-gltf-model>
 
     <a-gltf-model id="gltf2"
       src="#m2"
-      position="0 0.05 0"
+      position="0 -0.2 0"
       scale="0.15 0.15 0.15"
       visible="false"
     ></a-gltf-model>
 
     <a-gltf-model id="gltf3"
       src="#m3"
-      position="0 0.05 0"
+      position="0 -0.2 0"
       scale="0.30 0.30 0.30"
       visible="false"
     ></a-gltf-model>
